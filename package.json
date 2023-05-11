@@ -1,0 +1,37 @@
+{
+  "name": "vicinft-token",
+  "version": "1.0.0",
+  "description": "ViciCoin (VCNT) is a utility token, designed to help communities flourish.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.2.1",
+    "@nomiclabs/hardhat-web3": "^2.0.0",
+    "@types/xml2js": "^0.4.11",
+    "chai": "^4.3.4",
+    "ethers": "^5.7.2",
+    "hardhat": "^2.8.0",
+    "mocha-junit-reporter": "^2.2.0",
+    "web3": "^1.6.1",
+    "xml2js": "^0.4.23"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^0.5.1",
+    "@nomicfoundation/hardhat-toolbox": "^1.0.2",
+    "@openzeppelin/contracts": "^4.8.0",
+    "@openzeppelin/hardhat-upgrades": "^1.25.1",
+    "@openzeppelin/test-helpers": "^0.5.16",
+    "@typechain/hardhat": "^6.1.2",
+    "dotenv": "^16.0.0",
+    "eth-sig-util": "^3.0.1",
+    "ethereumjs-wallet": "^1.0.2",
+    "hardhat-etherscan-abi": "^0.3.0",
+    "node-ts": "^5.1.2",
+    "seaport": "github:ProjectOpenSea/seaport#1.5",
+    "ts-node": "^10.9.1"
+  }
+}
