@@ -38,7 +38,7 @@ struct ERC20BurnData {
  * @title ERC20 Operations Interface
  * @notice (c) 2023 ViciNFT https://vicinft.com/
  * @author Josh Davis <josh.davis@vicinft.com>
- * 
+ *
  * @dev Interface for ERC20 Operations.
  * @dev Main contracts SHOULD refer to the ops contract via the this interface.
  */
@@ -91,8 +91,10 @@ interface IERC20Operations is IOwnerOperator {
     /**
      * @dev see IERC20
      */
-    function transfer(IViciAccess ams, ERC20TransferData memory transferData)
-        external;
+    function transfer(
+        IViciAccess ams,
+        ERC20TransferData memory transferData
+    ) external;
 
     /**
      * @dev see IERC20
@@ -122,10 +124,10 @@ interface IERC20Operations is IOwnerOperator {
     /**
      * @dev see IERC20
      */
-    function allowance(address owner, address spender)
-        external
-        view
-        returns (uint256);
+    function allowance(
+        address owner,
+        address spender
+    ) external view returns (uint256);
 
     /**
      * @dev See {IERC20Permit-permit}.
@@ -136,4 +138,21 @@ interface IERC20Operations is IOwnerOperator {
         address spender,
         uint256 amount
     ) external;
+
+    /**
+     * @notice recover assets in banned or sanctioned accounts
+     *
+     * Requirements
+     * - `operator` MUST be the contract owner.
+     * - `fromAddress` MUST be banned or OFAC sanctioned
+     * - `toAddress` MAY be the zero address, in which case the
+     *     assets are burned.
+     * - `toAddress` MUST NOT be banned or OFAC sanctioned
+     */
+    function recoverSanctionedAssets(
+        IViciAccess ams,
+        address operator,
+        address fromAddress,
+        address toAddress
+    ) external returns (uint256 amount);
 }

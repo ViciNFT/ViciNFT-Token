@@ -14,9 +14,9 @@ import "./IERC20Operations.sol";
  * @title Vici ERC20
  * @notice (c) 2023 ViciNFT https://vicinft.com/
  * @author Josh Davis <josh.davis@vicinft.com>
- * 
+ *
  * @dev This contract provides base functionality for an ERC20 token.
- * @dev It adds support for pausible, ownable, access roles, and OFAC sanctions 
+ * @dev It adds support for pausible, ownable, access roles, and OFAC sanctions
  * compliance.
  * @dev Roles used by the access management are
  * - DEFAULT_ADMIN_ROLE: administers the other roles
@@ -24,13 +24,14 @@ import "./IERC20Operations.sol";
  * - MINTER_ROLE_NAME: can mint/burn tokens
  * - BANNED_ROLE: cannot send or receive tokens
  */
-contract ViciERC20 is
-    BaseViciContract,
-    IERC20Metadata,
-    IERC677,
-    EIP712
-{
+contract ViciERC20 is BaseViciContract, IERC20Metadata, IERC677, EIP712 {
     using Monotonic for Monotonic.Increaser;
+
+    event SanctionedAssetsRecovered(
+        address from,
+        address to,
+        uint256 value
+    );
 
     // Creator can create a new token type and mint an initial supply.
     bytes32 public constant MINTER_ROLE_NAME = "minter";
@@ -64,7 +65,7 @@ contract ViciERC20 is
     /**
      * @dev the initializer function
      * @param _accessServer The Access Server contract
-     * @param _tokenData The ERC20 Operations contract. You MUST set this 
+     * @param _tokenData The ERC20 Operations contract. You MUST set this
      * contract as the owner of that contract.
      * @param _name the name of the token.
      * @param _symbol the token symbol.
@@ -132,12 +133,9 @@ contract ViciERC20 is
     /**
      * @dev see IERC20
      */
-    function balanceOf(address owner)
-        public
-        view
-        virtual
-        returns (uint256 balance)
-    {
+    function balanceOf(
+        address owner
+    ) public view virtual returns (uint256 balance) {
         return tokenData.balanceOf(owner);
     }
 
@@ -158,12 +156,9 @@ contract ViciERC20 is
      * Requirements
      * - `index` MUST be less than the number of owners.
      */
-    function getOwnerAtIndex(uint256 index)
-        public
-        view
-        virtual
-        returns (address)
-    {
+    function getOwnerAtIndex(
+        uint256 index
+    ) public view virtual returns (address) {
         return tokenData.ownerAtIndex(index);
     }
 
@@ -184,11 +179,10 @@ contract ViciERC20 is
      * - `toAddress` MUST NOT be 0x0.
      * - `toAddress` MUST NOT be banned.
      */
-    function mint(address toAddress, uint256 amount)
-        public
-        virtual
-        whenNotPaused
-    {
+    function mint(
+        address toAddress,
+        uint256 amount
+    ) public virtual whenNotPaused {
         tokenData.mint(
             this,
             ERC20MintData(_msgSender(), MINTER_ROLE_NAME, toAddress, amount)
@@ -205,12 +199,10 @@ contract ViciERC20 is
      * - `to` cannot be the zero address.
      * - the caller must have a balance of at least `amount`.
      */
-    function transfer(address toAddress, uint256 amount)
-        public
-        virtual
-        override
-        returns (bool)
-    {
+    function transfer(
+        address toAddress,
+        uint256 amount
+    ) public virtual override returns (bool) {
         tokenData.transfer(
             this,
             ERC20TransferData(_msgSender(), _msgSender(), toAddress, amount)
@@ -274,11 +266,10 @@ contract ViciERC20 is
      * - Calling user MUST own the token or be authorized by the owner to
      *     transfer the token.
      */
-    function burn(address fromAddress, uint256 amount)
-        public
-        virtual
-        whenNotPaused
-    {
+    function burn(
+        address fromAddress,
+        uint256 amount
+    ) public virtual whenNotPaused {
         tokenData.burn(
             this,
             ERC20BurnData(_msgSender(), MINTER_ROLE_NAME, fromAddress, amount)
@@ -294,13 +285,10 @@ contract ViciERC20 is
     /**
      * @dev See {IERC20-allowance}.
      */
-    function allowance(address owner, address spender)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function allowance(
+        address owner,
+        address spender
+    ) public view virtual override returns (uint256) {
         return tokenData.allowance(owner, spender);
         //return _allowances[owner][spender];
     }
@@ -316,13 +304,10 @@ contract ViciERC20 is
      *
      * @inheritdoc IERC20
      */
-    function approve(address operator, uint256 amount)
-        public
-        virtual
-        override
-        whenNotPaused
-        returns (bool)
-    {
+    function approve(
+        address operator,
+        uint256 amount
+    ) public virtual override whenNotPaused returns (bool) {
         tokenData.permit(this, _msgSender(), operator, amount);
         emit Approval(_msgSender(), operator, amount);
         return true;
@@ -374,15 +359,38 @@ contract ViciERC20 is
     }
 
     /**
+     * @notice recover assets in banned or sanctioned accounts
+     * @dev emits SanctionedAssetsRecovered
+     *
+     * Requirements
+     * - `operator` MUST be the contract owner.
+     * - `fromAddress` MUST be banned or OFAC sanctioned
+     * - `toAddress` MAY be the zero address, in which case the
+     *     assets are burned.
+     * - `toAddress` MUST NOT be banned or OFAC sanctioned
+     */
+    function recoverSanctionedAssets(
+        address fromAddress,
+        address toAddress
+    ) public virtual onlyOwner {
+        uint256 amount = tokenData.recoverSanctionedAssets(
+            this,
+            msg.sender,
+            fromAddress,
+            toAddress
+        );
+        emit SanctionedAssetsRecovered(fromAddress, toAddress, amount);
+        _post_transfer_hook(fromAddress, toAddress, amount);
+    }
+
+    /**
      * @dev "Consume a nonce": return the current value and increment.
      *
      * _Available since v4.1._
      */
-    function _useNonce(address owner)
-        internal
-        virtual
-        returns (uint256 current)
-    {
+    function _useNonce(
+        address owner
+    ) internal virtual returns (uint256 current) {
         Monotonic.Increaser storage nonce = _nonces[owner];
         current = nonce.current();
         nonce.add(1);
@@ -400,21 +408,25 @@ contract ViciERC20 is
      * Hooks
      * ##############################################################*/
 
-    function _post_mint_hook(address toAddress, uint256 amount)
-        internal
-        virtual
-    {
+    function _post_mint_hook(
+        address toAddress,
+        uint256 amount
+    ) internal virtual {
         _post_transfer_hook(address(0), toAddress, amount);
     }
 
-    function _post_burn_hook(address fromAddress, uint256 amount)
-        internal
-        virtual
-    {
+    function _post_burn_hook(
+        address fromAddress,
+        uint256 amount
+    ) internal virtual {
         _post_transfer_hook(fromAddress, address(0), amount);
     }
 
-    function _post_transfer_hook(address fromAddress, address toAddress, uint256 amount) internal virtual {
+    function _post_transfer_hook(
+        address fromAddress,
+        address toAddress,
+        uint256 amount
+    ) internal virtual {
         emit Transfer(fromAddress, toAddress, amount);
     }
 

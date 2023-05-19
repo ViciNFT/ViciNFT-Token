@@ -8,7 +8,7 @@ import "./IERC20Operations.sol";
  * @title ERC20 Operations
  * @notice (c) 2023 ViciNFT https://vicinft.com/
  * @author Josh Davis <josh.davis@vicinft.com>
- * 
+ *
  * @dev This contract implements most ERC20 behavior on behalf of a main ERC20
  * contract, to reduce the bytecode size of the main contract.
  * @dev The main contract MUST be the owner of this contract.
@@ -16,7 +16,6 @@ import "./IERC20Operations.sol";
  * interface.
  */
 contract ERC20Operations is OwnerOperator, IERC20Operations {
-
     uint256 maxSupply;
 
     /* ################################################################
@@ -27,18 +26,16 @@ contract ERC20Operations is OwnerOperator, IERC20Operations {
         __ERC20Operations_init(_maxSupply);
     }
 
-    function __ERC20Operations_init(uint256 _maxSupply)
-        internal
-        onlyInitializing
-    {
+    function __ERC20Operations_init(
+        uint256 _maxSupply
+    ) internal onlyInitializing {
         __OwnerOperator_init();
         __ERC20Operations_init_unchained(_maxSupply);
     }
 
-    function __ERC20Operations_init_unchained(uint256 _maxSupply)
-        internal
-        onlyInitializing
-    {
+    function __ERC20Operations_init_unchained(
+        uint256 _maxSupply
+    ) internal onlyInitializing {
         maxSupply = _maxSupply;
     }
 
@@ -79,14 +76,14 @@ contract ERC20Operations is OwnerOperator, IERC20Operations {
     /**
      * @dev Returns the total maximum possible that can be minted.
      */
-    function getMaxSupply() public override view virtual returns (uint256) {
+    function getMaxSupply() public view virtual override returns (uint256) {
         return maxSupply;
     }
 
     /**
      * @dev Returns the amount that has been minted so far.
      */
-    function totalSupply() public override view virtual returns (uint256) {
+    function totalSupply() public view virtual override returns (uint256) {
         return itemSupply(1);
     }
 
@@ -94,19 +91,16 @@ contract ERC20Operations is OwnerOperator, IERC20Operations {
      * @dev returns the amount available to be minted.
      * @dev {total available} = {max supply} - {amount minted so far}
      */
-    function availableSupply() public override view virtual returns (uint256) {
+    function availableSupply() public view virtual override returns (uint256) {
         return maxSupply - itemSupply(1);
     }
 
     /**
      * @dev see IERC20
      */
-    function balanceOf(address account)
-        public override
-        view
-        virtual
-        returns (uint256 balance)
-    {
+    function balanceOf(
+        address account
+    ) public view virtual override returns (uint256 balance) {
         balance = getBalance(account, 1);
     }
 
@@ -128,9 +122,13 @@ contract ERC20Operations is OwnerOperator, IERC20Operations {
      *      {IERC20Receiver-onERC20Received}, which is called upon a safe
      *      transfer.
      */
-    function mint(IViciAccess ams, ERC20MintData memory mintData)
-        public override
+    function mint(
+        IViciAccess ams,
+        ERC20MintData memory mintData
+    )
+        public
         virtual
+        override
         onlyOwner
         onlyOwnerOrRole(ams, mintData.operator, mintData.requiredRole)
         notBanned(ams, mintData.toAddress)
@@ -166,9 +164,13 @@ contract ERC20Operations is OwnerOperator, IERC20Operations {
     /**
      * @dev see IERC20
      */
-    function transfer(IViciAccess ams, ERC20TransferData memory transferData)
-        public override
+    function transfer(
+        IViciAccess ams,
+        ERC20TransferData memory transferData
+    )
+        public
         virtual
+        override
         onlyOwner
         notBanned(ams, transferData.operator)
         notBanned(ams, transferData.fromAddress)
@@ -194,8 +196,9 @@ contract ERC20Operations is OwnerOperator, IERC20Operations {
         IViciAccess ams,
         ERC20TransferData memory transferData
     )
-        public override
+        public
         virtual
+        override
         onlyOwner
         notBanned(ams, transferData.operator)
         notBanned(ams, transferData.fromAddress)
@@ -221,9 +224,13 @@ contract ERC20Operations is OwnerOperator, IERC20Operations {
      * - `burnData.operator` MUST own the token or be authorized by the
      *     owner to transfer the token.
      */
-    function burn(IViciAccess ams, ERC20BurnData memory burnData)
-        public override
+    function burn(
+        IViciAccess ams,
+        ERC20BurnData memory burnData
+    )
+        public
         virtual
+        override
         onlyOwner
         onlyOwnerOrRole(ams, burnData.operator, burnData.requiredRole)
     {
@@ -251,12 +258,10 @@ contract ERC20Operations is OwnerOperator, IERC20Operations {
     /**
      * @dev see IERC20
      */
-    function allowance(address owner, address spender)
-        public override
-        view
-        virtual
-        returns (uint256)
-    {
+    function allowance(
+        address owner,
+        address spender
+    ) public view virtual override returns (uint256) {
         return allowance(owner, spender, 1);
     }
 
@@ -268,8 +273,47 @@ contract ERC20Operations is OwnerOperator, IERC20Operations {
         address owner,
         address spender,
         uint256 amount
-    ) public override virtual onlyOwner notBanned(ams, owner) notBanned(ams, spender) {
+    )
+        public
+        virtual
+        override
+        onlyOwner
+        notBanned(ams, owner)
+        notBanned(ams, spender)
+    {
         approve(owner, spender, 1, amount);
+    }
+
+    /**
+     * @dev see {IERC20Operations-recoverSanctionedAssets}
+     */
+    function recoverSanctionedAssets(
+        IViciAccess ams,
+        address operator,
+        address fromAddress,
+        address toAddress
+    )
+        public
+        virtual
+        override
+        onlyOwner
+        notBanned(ams, toAddress)
+        returns (uint256 amount)
+    {
+        require(
+            ams.isBanned(fromAddress) || ams.isSanctioned(fromAddress),
+            "Not banned or sanctioned"
+        );
+
+        amount = balanceOf(fromAddress);
+        approve(fromAddress, operator, 1, amount);
+        doTransfer(
+            operator,
+            fromAddress,
+            toAddress,
+            1,
+            amount
+        );
     }
 
     /**
