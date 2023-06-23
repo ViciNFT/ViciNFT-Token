@@ -11,7 +11,11 @@ const { constants } = require("@openzeppelin/test-helpers");
 import { MOCK_CONTRACTS, deployERC20 } from "../../test-utils/CommonContracts";
 
 import { expectEvent } from "../../helper";
-import { AccessServer, MockSanctions, ViciERC20 } from "../../../typechain-types";
+import {
+  AccessServer,
+  MockSanctions,
+  ViciERC20UtilityToken,
+} from "../../../typechain-types";
 
 const ADMIN =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
@@ -67,10 +71,10 @@ describe("Test ERC20 ", () => {
   let oligarch: SignerWithAddress;
 
   let accessServer: AccessServer;
-  let tokenContract: ViciERC20;
+  let tokenContract: ViciERC20UtilityToken;
   let sanctionsOracle: MockSanctions;
 
-  let initTokenContract: () => Promise<ViciERC20>;
+  let initTokenContract: () => Promise<ViciERC20UtilityToken>;
 
   before(async function () {
     // test setup
@@ -95,7 +99,7 @@ describe("Test ERC20 ", () => {
     await sanctionsOracle.addToSanctionsList([oligarch.address]);
     await accessServer.setSanctionsList(sanctionsOracle.address);
 
-    initTokenContract = async function (): Promise<ViciERC20> {
+    initTokenContract = async function (): Promise<ViciERC20UtilityToken> {
       let newContract = await deployERC20(
         accessServer,
         name,
@@ -178,7 +182,7 @@ describe("Test ERC20 ", () => {
     });
 
     context("Transferring", function () {
-      let contractUnderTest: ViciERC20;
+      let contractUnderTest: ViciERC20UtilityToken;
       let tx: ContractTransaction;
       let receipt: ContractReceipt;
 
@@ -230,7 +234,7 @@ describe("Test ERC20 ", () => {
       }
 
       type TransferFunction = (
-        contractUnderTest: ViciERC20,
+        contractUnderTest: ViciERC20UtilityToken,
         owner: string,
         toWhom: string,
         amount: BigNumber,
@@ -409,6 +413,24 @@ describe("Test ERC20 ", () => {
           }
         );
 
+        context(
+          "when the address to transfer the token from is the zero address",
+          function () {
+            it("reverts", async function () {
+              await expect(
+                transferFunction.call(
+                  this,
+                  contractUnderTest,
+                  constants.ZERO_ADDRESS,
+                  holder1.address,
+                  firstTokenAmount,
+                  holder1
+                )
+              ).to.be.revertedWith("ERC20: transfer from the zero address");
+            });
+          }
+        );
+
         context("when the contract is paused", function () {
           it("reverts", async function () {
             await contractUnderTest.pause();
@@ -509,7 +531,7 @@ describe("Test ERC20 ", () => {
     });
 
     context("Approving", function () {
-      let contractUnderTest: ViciERC20;
+      let contractUnderTest: ViciERC20UtilityToken;
       let tx: ContractTransaction;
       let receipt: ContractReceipt;
       let expectedApproved: string;
@@ -715,7 +737,7 @@ describe("Test ERC20 ", () => {
   }); //describe
 
   describe("Test Minting", () => {
-    let contractUnderTest: ViciERC20;
+    let contractUnderTest: ViciERC20UtilityToken;
     let tx: ContractTransaction;
     let receipt: ContractReceipt;
     let toWhom: string;
@@ -759,7 +781,7 @@ describe("Test ERC20 ", () => {
     }
 
     type MintFunction = (
-      contractUnderTest: ViciERC20,
+      contractUnderTest: ViciERC20UtilityToken,
       operator: SignerWithAddress,
       toWhom: string,
       amount: BigNumber
@@ -835,7 +857,7 @@ describe("Test ERC20 ", () => {
   }); //describe
 
   describe("Test Burning", () => {
-    let contractUnderTest: ViciERC20;
+    let contractUnderTest: ViciERC20UtilityToken;
     let tx: ContractTransaction;
     let receipt: ContractReceipt;
     let tokenOwner: string;

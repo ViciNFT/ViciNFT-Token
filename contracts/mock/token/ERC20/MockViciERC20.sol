@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-import "../../../token/ERC20/ViciERC20.sol";
+import "../../../token/ERC20/extensions/ViciERC20UtilityToken.sol";
 
 /**
  * @title Mock Vici ERC20
@@ -11,7 +11,7 @@ import "../../../token/ERC20/ViciERC20.sol";
  * @dev A simple extension to our ViciERC20 contract with a public unsecured 
  * freeMint function.
  */
-contract MockViciERC20 is ViciERC20 {
+contract MockViciERC20 is ViciERC20UtilityToken {
     function initialize(
         IAccessServer _accessServer,
         IERC20Operations _tokenData,
@@ -43,5 +43,21 @@ contract MockViciERC20 is ViciERC20 {
         );
 
         _post_mint_hook(_toAddress, _amount);
+    }
+
+    function domainSeparatorV4() public view returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
+    function hashTypedDataV4(bytes32 structHash) public view virtual returns (bytes32) {
+        return _hashTypedDataV4(structHash);
+    }
+
+    function EIP712NameHash() public virtual view returns (bytes32) {
+        return _EIP712NameHash();
+    }
+
+    function EIP712VersionHash() public virtual view returns (bytes32) {
+        return _EIP712VersionHash();
     }
 }

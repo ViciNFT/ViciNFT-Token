@@ -20,7 +20,7 @@ import { expectEvent } from "../../helper";
 import {
   AccessServer,
   MockSanctions,
-  ViciERC20,
+  ViciERC20UtilityToken,
 } from "../../../typechain-types";
 
 const AMOUNT = BigNumber.from(100);
@@ -50,7 +50,7 @@ describe("Test ERC20 Permit", () => {
   let l33tHaxx0r: Wallet;
 
   let accessServer: AccessServer;
-  let tokenContract: ViciERC20;
+  let tokenContract: ViciERC20UtilityToken;
   let sanctionsOracle: MockSanctions;
   let chainId: number;
 

@@ -97,14 +97,6 @@ interface IERC20Operations is IOwnerOperator {
     ) external;
 
     /**
-     * @dev see IERC20
-     */
-    function transferFrom(
-        IViciAccess ams,
-        ERC20TransferData memory transferData
-    ) external;
-
-    /**
      * @dev Burns the identified token.
      * @dev Updates available quantities
      *

@@ -13,10 +13,10 @@ import {
 import { getPermitDigest, sign } from "./ERC20-Permit-Functions";
 import {
   AccessServer,
-  ERC20Operations,
+  ERC20UtilityOperations,
   MockERC20OpsForUpgrade,
   MockViciERC20,
-  ViciERC20,
+  ViciERC20UtilityToken,
 } from "../../../typechain-types";
 
 const hodler1OriginalBalance = BigNumber.from("1000");
@@ -42,8 +42,8 @@ describe("ERC20 Upgradeable Test", function () {
   let operator: SignerWithAddress;
 
   let accessServer: AccessServer;
-  let tokenContract: ViciERC20 | MockViciERC20;
-  let ownerOperatorContract: ERC20Operations | MockERC20OpsForUpgrade;
+  let tokenContract: ViciERC20UtilityToken | MockViciERC20;
+  let ownerOperatorContract: ERC20UtilityOperations | MockERC20OpsForUpgrade;
 
   let originalImplAddress: string;
   let originalProxyAddress: string;
@@ -106,15 +106,15 @@ describe("ERC20 Upgradeable Test", function () {
   async function upgradeERC20() {
     tokenContract = (await proxyUpgrade(
       tokenContract,
-      "ViciERC20"
-    )) as ViciERC20;
+      "ViciERC20UtilityToken"
+    )) as ViciERC20UtilityToken;
   }
 
   async function upgradeOwnerOperator() {
     ownerOperatorContract = (await proxyUpgrade(
       ownerOperatorContract,
-      "ERC20Operations"
-    )) as ERC20Operations;
+      "ERC20UtilityOperations"
+    )) as ERC20UtilityOperations;
   }
 
   this.beforeAll(async function () {

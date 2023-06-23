@@ -180,30 +180,10 @@ contract ERC20Operations is OwnerOperator, IERC20Operations {
             transferData.toAddress != address(0),
             "ERC20: transfer to the zero address"
         );
-        doTransfer(
-            transferData.operator,
-            transferData.fromAddress,
-            transferData.toAddress,
-            1,
-            transferData.amount
+        require(
+            transferData.fromAddress != address(0),
+            "ERC20: transfer from the zero address"
         );
-    }
-
-    /**
-     * @dev see IERC20
-     */
-    function transferFrom(
-        IViciAccess ams,
-        ERC20TransferData memory transferData
-    )
-        public
-        virtual
-        override
-        onlyOwner
-        notBanned(ams, transferData.operator)
-        notBanned(ams, transferData.fromAddress)
-        notBanned(ams, transferData.toAddress)
-    {
         doTransfer(
             transferData.operator,
             transferData.fromAddress,

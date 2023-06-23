@@ -5,10 +5,10 @@ import { Libraries } from "hardhat/types";
 
 import { Manifest } from "@openzeppelin/upgrades-core";
 import {
-  ERC20Operations,
-  MockViciERC20,
+  ERC20UtilityOperations,
+  MockViciERC20UtilityToken,
   ProxyAdmin,
-  ViciERC20,
+  ViciERC20UtilityToken,
   AccessServer,
   MockSanctions,
 } from "../../typechain-types";
@@ -94,13 +94,13 @@ export async function deployERC20(
   symbol: string,
   decimals: BigNumberish,
   max_supply: BigNumberish,
-  erc20Name: string = "ViciERC20",
-  erc20OpsName: string = "ERC20Operations"
-): Promise<ViciERC20> {
+  erc20Name: string = "ViciERC20UtilityToken",
+  erc20OpsName: string = "ERC20UtilityOperations"
+): Promise<ViciERC20UtilityToken> {
   let erc20Ops = (await proxyDeploy(
     erc20OpsName,
     max_supply
-  )) as ERC20Operations;
+  )) as ERC20UtilityOperations;
   let erc20 = (await proxyDeploy(
     erc20Name,
     accessServer.address,
@@ -108,7 +108,7 @@ export async function deployERC20(
     name,
     symbol,
     decimals
-  )) as ViciERC20;
+  )) as ViciERC20UtilityToken;
   erc20Ops.transferOwnership(erc20.address);
   return erc20;
 }
