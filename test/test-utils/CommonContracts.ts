@@ -6,12 +6,13 @@ import { Libraries } from "hardhat/types";
 import { Manifest } from "@openzeppelin/upgrades-core";
 import {
   ERC20UtilityOperations,
-  MockViciERC20UtilityToken,
   ProxyAdmin,
   ViciERC20UtilityToken,
   AccessServer,
   MockSanctions,
 } from "../../typechain-types";
+import { EventABI } from "../helper";
+import { EventFragment } from "ethers/lib/utils";
 
 export async function getProxyAdmin(): Promise<ProxyAdmin> {
   let manifest = await Manifest.forNetwork(hardhat.network.provider);
@@ -26,6 +27,23 @@ export async function getImplementationAddress(
   let proxyAdmin = await getProxyAdmin();
   return proxyAdmin.getProxyImplementation(proxyAddress);
 }
+
+export const PROXY_UPGRADE_EVENT = new EventABI(
+  "Upgraded(address)",
+  EventFragment.fromObject({
+    name: "Upgraded",
+    type: "event",
+    anonymous: false,
+    inputs: [
+      {
+        name: "implementation",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
+    ],
+  })
+);
 
 export async function deploy(
   name: string,
