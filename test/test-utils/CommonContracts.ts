@@ -7,7 +7,7 @@ import { Manifest } from "@openzeppelin/upgrades-core";
 import {
   ERC20UtilityOperations,
   ProxyAdmin,
-  ViciERC20UtilityToken,
+  ViciERC20MintableUtilityToken,
   AccessServer,
   MockSanctions,
 } from "../../typechain-types";
@@ -112,9 +112,9 @@ export async function deployERC20(
   symbol: string,
   decimals: BigNumberish,
   max_supply: BigNumberish,
-  erc20Name: string = "ViciERC20UtilityToken",
+  erc20Name: string = "ViciERC20MintableUtilityToken",
   erc20OpsName: string = "ERC20UtilityOperations"
-): Promise<ViciERC20UtilityToken> {
+): Promise<ViciERC20MintableUtilityToken> {
   let erc20Ops = (await proxyDeploy(
     erc20OpsName,
     max_supply
@@ -126,7 +126,7 @@ export async function deployERC20(
     name,
     symbol,
     decimals
-  )) as ViciERC20UtilityToken;
+  )) as ViciERC20MintableUtilityToken;
   erc20Ops.transferOwnership(erc20.address);
   return erc20;
 }

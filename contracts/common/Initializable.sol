@@ -54,9 +54,9 @@ import "../utils/AddressUtils.sol";
  * ```
  * ====
  *
- * @dev This contract is a direct copy of OpenZeppelin's InitializableUpgradeable, 
- * moved here, renamed, and modified to use our AddressUtils library so we 
- * don't have to deal with incompatibilities between OZ'` contracts and 
+ * @dev This contract is a direct copy of OpenZeppelin's InitializableUpgradeable,
+ * moved here, renamed, and modified to use our AddressUtils library so we
+ * don't have to deal with incompatibilities between OZ'` contracts and
  * contracts-upgradeable `
  */
 abstract contract Initializable {
@@ -88,7 +88,8 @@ abstract contract Initializable {
     modifier initializer() {
         bool isTopLevelCall = !_initializing;
         require(
-            (isTopLevelCall && _initialized < 1) || (!AddressUtils.isContract(address(this)) && _initialized == 1),
+            (isTopLevelCall && _initialized < 1) ||
+                (!AddressUtils.isContract(address(this)) && _initialized == 1),
             "Initializable: contract is already initialized"
         );
         _initialized = 1;
@@ -121,7 +122,10 @@ abstract contract Initializable {
      * Emits an {Initialized} event.
      */
     modifier reinitializer(uint8 version) {
-        require(!_initializing && _initialized < version, "Initializable: contract is already initialized");
+        require(
+            !_initializing && _initialized < version,
+            "Initializable: contract is already initialized"
+        );
         _initialized = version;
         _initializing = true;
         _;
@@ -136,6 +140,11 @@ abstract contract Initializable {
     modifier onlyInitializing() {
         require(_initializing, "Initializable: contract is not initializing");
         _;
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
     }
 
     /**

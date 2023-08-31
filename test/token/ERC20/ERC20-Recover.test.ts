@@ -9,7 +9,7 @@ import { expectEvent } from "../../helper";
 import {
   AccessServer,
   MockSanctions,
-  ViciERC20UtilityToken,
+  ViciERC20MintableUtilityToken,
 } from "../../../typechain-types";
 
 const ADMIN =
@@ -47,7 +47,7 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
   let accessServer: AccessServer;
   let sanctionsOracle: MockSanctions;
 
-  let initTokenContract: () => Promise<ViciERC20UtilityToken>;
+  let initTokenContract: () => Promise<ViciERC20MintableUtilityToken>;
 
   before(async function () {
     signers = await hardhat.ethers.getSigners();
@@ -67,7 +67,7 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
     await sanctionsOracle.addToSanctionsList([oligarch.address]);
     await accessServer.setSanctionsList(sanctionsOracle.address);
 
-    initTokenContract = async function (): Promise<ViciERC20UtilityToken> {
+    initTokenContract = async function (): Promise<ViciERC20MintableUtilityToken> {
       let newContract = await deployERC20(
         accessServer,
         name,
@@ -99,7 +99,7 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
 
   describe("Postive tests", function () {
     context("When calling `recoverSanctionedAssets()` as owner", function () {
-      let contractUnderTest: ViciERC20UtilityToken;
+      let contractUnderTest: ViciERC20MintableUtilityToken;
       let fromAccount: string;
       let toAccount: string;
       let recoverAmount: BigNumber;
@@ -205,7 +205,7 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
       balance: BigNumber;
     }
 
-    let contractUnderTest: ViciERC20UtilityToken;
+    let contractUnderTest: ViciERC20MintableUtilityToken;
     let operatorAccounts: Map<String, SignerWithAddress> = new Map();
     let testAccounts: Map<string, string> = new Map();
     let testCase: NegativeTestCase = {

@@ -234,7 +234,7 @@ abstract contract Wallet is
         internal
         virtual
     {
-        require(toAddress != address(0));
+        require(toAddress != address(0), "ETH: transfer to the zero address");
         toAddress.transfer(amount);
         emit Withdraw(toAddress, amount);
     }
@@ -251,7 +251,7 @@ abstract contract Wallet is
         uint256 amount,
         IERC20 tokenContract
     ) internal virtual {
-        require(toAddress != address(0));
+        require(toAddress != address(0), "ERC20: transfer to the zero address");
         tokenContract.transfer(toAddress, amount);
         emit WithdrawERC20(toAddress, address(tokenContract), amount);
     }
@@ -268,7 +268,7 @@ abstract contract Wallet is
         uint256 tokenId,
         IERC721 tokenContract
     ) internal virtual {
-        require(toAddress != address(0));
+        require(toAddress != address(0), "ERC721: transfer to the zero address");
         tokenContract.safeTransferFrom(address(this), toAddress, tokenId);
         emit WithdrawERC721(toAddress, address(tokenContract), tokenId);
     }
@@ -285,7 +285,7 @@ abstract contract Wallet is
         uint256 amount,
         IERC777 tokenContract
     ) internal virtual {
-        require(toAddress != address(0));
+        require(toAddress != address(0), "ERC777: transfer to the zero address");
         tokenContract.operatorSend(address(this), toAddress, amount, "", "");
         emit WithdrawERC777(toAddress, address(tokenContract), amount);
     }
@@ -304,7 +304,7 @@ abstract contract Wallet is
         uint256 amount,
         IERC1155 tokenContract
     ) internal virtual {
-        require(toAddress != address(0));
+        require(toAddress != address(0), "ERC1155: transfer to the zero address");
         tokenContract.safeTransferFrom(
             address(this),
             toAddress,

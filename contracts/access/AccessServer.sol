@@ -526,7 +526,7 @@ contract AccessServer is Ownable, IAccessServer {
         override
         returns (bool)
     {
-        return _hasRole(GLOBAL_RESOURCE, role, account);
+        return hasLocalRole(GLOBAL_RESOURCE, role, account);
     }
 
     /**
@@ -626,14 +626,6 @@ contract AccessServer is Ownable, IAccessServer {
         override
     {
         checkRole(_msgSender(), role, account);
-    }
-
-    function _hasRole(
-        address resource,
-        bytes32 role,
-        address account
-    ) internal view virtual returns (bool) {
-        return managedResources[resource].roles[role].members[account];
     }
 
     /* ################################################################

@@ -167,31 +167,6 @@ contract ViciERC20 is BaseViciContract, IERC20Metadata, IERC677, EIP712 {
      * ##############################################################*/
 
     /**
-     * @notice Safely mints a new token and transfers it to `toAddress`.
-     * @param toAddress The account to receive the newly minted token.
-     * @param amount The id of the new token.
-     *
-     * Requirements:
-     *
-     * - Contract MUST NOT be paused.
-     * - Calling user MUST be owner or have the minter role.
-     * - Calling user MUST NOT be banned.
-     * - `toAddress` MUST NOT be 0x0.
-     * - `toAddress` MUST NOT be banned.
-     */
-    function mint(
-        address toAddress,
-        uint256 amount
-    ) public virtual whenNotPaused {
-        tokenData.mint(
-            this,
-            ERC20MintData(_msgSender(), MINTER_ROLE_NAME, toAddress, amount)
-        );
-
-        _post_mint_hook(toAddress, amount);
-    }
-
-    /**
      * @dev See {IERC20-transfer}.
      *
      * Requirements:
@@ -217,7 +192,6 @@ contract ViciERC20 is BaseViciContract, IERC20Metadata, IERC677, EIP712 {
      *
      * Requirements
      *
-     * - Contract MUST NOT be paused.
      * - `fromAddress` and `toAddress` MUST NOT be the zero address.
      * - `toAddress`, `fromAddress`, and calling user MUST NOT be banned.
      * - `_tokenId` MUST belong to `fromAddress`.
@@ -230,7 +204,7 @@ contract ViciERC20 is BaseViciContract, IERC20Metadata, IERC677, EIP712 {
         address fromAddress,
         address toAddress,
         uint256 amount
-    ) public virtual override whenNotPaused returns (bool) {
+    ) public virtual override returns (bool) {
         tokenData.transfer(
             this,
             ERC20TransferData(_msgSender(), fromAddress, toAddress, amount)
@@ -253,31 +227,6 @@ contract ViciERC20 is BaseViciContract, IERC20Metadata, IERC677, EIP712 {
         return true;
     }
 
-    /**
-     * @notice Burns the identified token.
-     * @param amount The amount of tokens to be burned.
-     * Emits a {Transfer} event.
-     *
-     * Requirements:
-     *
-     * - Contract MUST NOT be paused.
-     * - Calling user MUST be owner or have the minter role.
-     * - Calling user MUST NOT be banned.
-     * - Calling user MUST own the token or be authorized by the owner to
-     *     transfer the token.
-     */
-    function burn(
-        address fromAddress,
-        uint256 amount
-    ) public virtual whenNotPaused {
-        tokenData.burn(
-            this,
-            ERC20BurnData(_msgSender(), MINTER_ROLE_NAME, fromAddress, amount)
-        );
-
-        _post_burn_hook(fromAddress, amount);
-    }
-
     /* ################################################################
      * Approvals / Allowances
      * ##############################################################*/
@@ -296,7 +245,6 @@ contract ViciERC20 is BaseViciContract, IERC20Metadata, IERC677, EIP712 {
     /**
      * Requirements
      *
-     * - Contract MUST NOT be paused.
      * - caller MUST be the token owner or be approved for all by the token
      *     owner.
      * - `operator` MUST NOT be the zero address.
@@ -307,7 +255,7 @@ contract ViciERC20 is BaseViciContract, IERC20Metadata, IERC677, EIP712 {
     function approve(
         address operator,
         uint256 amount
-    ) public virtual override whenNotPaused returns (bool) {
+    ) public virtual override returns (bool) {
         tokenData.permit(this, _msgSender(), operator, amount);
         emit Approval(_msgSender(), operator, amount);
         return true;

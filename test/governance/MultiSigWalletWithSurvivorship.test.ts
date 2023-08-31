@@ -2,10 +2,9 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import {
   BigNumber,
   BigNumberish,
-  Contract,
   ContractReceipt,
   ContractTransaction,
-  Event,
+  Wallet,
 } from "ethers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
@@ -26,20 +25,20 @@ import {
   proxyDeploy,
 } from "../test-utils/CommonContracts";
 import {
+  AccessServer,
   MockERC1155,
   MockERC1155__factory,
-  MockERC20,
-  MockERC20__factory,
   MockERC721,
   MockERC721__factory,
   MockMultiSigWallet,
   MockMultiSigWallet__factory,
+  MockSanctions,
   MockViciERC20,
   MockViciERC20__factory,
   MultiSigWalletWithSurvivorship,
   ProxyAdmin,
   ProxyAdmin__factory,
-  ViciERC20UtilityToken,
+  ViciERC20MintableUtilityToken,
 } from "../../typechain-types";
 
 type MultisigWallet = MultiSigWalletWithSurvivorship | MockMultiSigWallet;
@@ -65,6 +64,7 @@ const TransactionStatus = {
   CONFIRMED: 2,
   EXECUTED: 3,
   VETOED: 4,
+  REVERTED: 5,
 };
 
 const MODERATOR =
@@ -139,7 +139,7 @@ let testFilter = {
 };
 
 describe("Multisig Wallet", () => {
-  let accessServer: Contract;
+  let accessServer: AccessServer;
   let contractOwner: SignerWithAddress;
   let signatory1: SignerWithAddress;
   let signatory2: SignerWithAddress;
@@ -152,6 +152,8 @@ describe("Multisig Wallet", () => {
   let dummyDescription = encodeString(`Dummy TX`);
   let walletABI: ContractABI;
   let initMultisig: (args: MultisigArgs) => Promise<MultisigWallet>;
+
+  let sanctionsOracle: MockSanctions;
 
   let signerMap: Map<string, SignerWithAddress> = new Map();
 
@@ -472,6 +474,9 @@ describe("Multisig Wallet", () => {
     ];
 
     accessServer = await MOCK_CONTRACTS.mockAccessServer();
+    await accessServer.addAdministrator(contractOwner.address);
+    sanctionsOracle = await MOCK_CONTRACTS.mockSanctionsList();
+    await accessServer.setSanctionsList(sanctionsOracle.address);
 
     initMultisig = function ({
       signers = defaultSignatories,
@@ -1147,7 +1152,15 @@ describe("Multisig Wallet", () => {
           it("An `ExecutionFailure` event is emitted", async function () {
             expectEvent(receipt, "ExecutionFailure", {
               transactionId: transactionId,
+              reason: `Already owner: ${signatory1.address.toLowerCase()}`,
             });
+          });
+
+          it("The transaction is in 'REVERTED' state", async function () {
+            let transaction = await contractUnderTest.transactions(
+              transactionId
+            );
+            expect(transaction.status).to.equal(TransactionStatus.REVERTED);
           });
         });
 
@@ -1163,7 +1176,15 @@ describe("Multisig Wallet", () => {
           it("An `ExecutionFailure` event is emitted", async function () {
             expectEvent(receipt, "ExecutionFailure", {
               transactionId: transactionId,
+              reason: "Null owner address",
             });
+          });
+
+          it("The transaction is in 'REVERTED' state", async function () {
+            let transaction = await contractUnderTest.transactions(
+              transactionId
+            );
+            expect(transaction.status).to.equal(TransactionStatus.REVERTED);
           });
         });
 
@@ -1182,7 +1203,13 @@ describe("Multisig Wallet", () => {
           it("An `ExecutionFailure` event is emitted", async function () {
             expectEvent(receipt, "ExecutionFailure", {
               transactionId: transactionId,
+              reason: "Too many owners",
             });
+          });
+
+          it("The transaction is in 'REVERTED' state", async function () {
+            let transaction = await fullContract.transactions(transactionId);
+            expect(transaction.status).to.equal(TransactionStatus.REVERTED);
           });
         });
       }); // When adding an owner
@@ -1263,18 +1290,26 @@ describe("Multisig Wallet", () => {
           );
 
           context("if the address is not an owner", function () {
+            let unonwer: string;
+
             this.beforeAll(async function () {
-              receipt = await doRemoveOwner(
-                contractUnderTest,
-                FIFTY_ONE_RANDOS[32]
-              );
+              unonwer = FIFTY_ONE_RANDOS[32];
+              receipt = await doRemoveOwner(contractUnderTest, unonwer);
               transactionId = await contractUnderTest.transactionCount();
             });
 
             it("An `ExecutionFailure` event is emitted", async function () {
               expectEvent(receipt, "ExecutionFailure", {
                 transactionId: transactionId,
+                reason: `Not owner: ${unonwer.toLowerCase()}`,
               });
+            });
+
+            it("The transaction is in 'REVERTED' state", async function () {
+              let transaction = await contractUnderTest.transactions(
+                transactionId
+              );
+              expect(transaction.status).to.equal(TransactionStatus.REVERTED);
             });
           });
 
@@ -1294,7 +1329,15 @@ describe("Multisig Wallet", () => {
             it("An `ExecutionFailure` event is emitted", async function () {
               expectEvent(receipt, "ExecutionFailure", {
                 transactionId: transactionId,
+                reason: "Required can't be zero",
               });
+            });
+
+            it("The transaction is in 'REVERTED' state", async function () {
+              let transaction = await singleOwnerWallet.transactions(
+                transactionId
+              );
+              expect(transaction.status).to.equal(TransactionStatus.REVERTED);
             });
           });
         });
@@ -1349,7 +1392,15 @@ describe("Multisig Wallet", () => {
           it("An `ExecutionFailure` event is emitted", async function () {
             expectEvent(receipt, "ExecutionFailure", {
               transactionId: transactionId,
+              reason: `Already owner: ${signatory2.address.toLowerCase()}`,
             });
+          });
+
+          it("The transaction is in 'REVERTED' state", async function () {
+            let transaction = await contractUnderTest.transactions(
+              transactionId
+            );
+            expect(transaction.status).to.equal(TransactionStatus.REVERTED);
           });
         });
 
@@ -1366,15 +1417,26 @@ describe("Multisig Wallet", () => {
           it("An `ExecutionFailure` event is emitted", async function () {
             expectEvent(receipt, "ExecutionFailure", {
               transactionId: transactionId,
+              reason: "Null owner address",
             });
+          });
+
+          it("The transaction is in 'REVERTED' state", async function () {
+            let transaction = await contractUnderTest.transactions(
+              transactionId
+            );
+            expect(transaction.status).to.equal(TransactionStatus.REVERTED);
           });
         });
 
         context("if the old owner is not an owner", function () {
+          let unowner: string;
+
           this.beforeAll(async function () {
+            unowner = FIFTY_ONE_RANDOS[32];
             receipt = await doReplaceOwner(
               contractUnderTest,
-              FIFTY_ONE_RANDOS[32],
+              unowner,
               FIFTY_ONE_RANDOS[34]
             );
             transactionId = await contractUnderTest.transactionCount();
@@ -1383,7 +1445,15 @@ describe("Multisig Wallet", () => {
           it("An `ExecutionFailure` event is emitted", async function () {
             expectEvent(receipt, "ExecutionFailure", {
               transactionId: transactionId,
+              reason: `Not owner: ${unowner.toLowerCase()}`,
             });
+          });
+
+          it("The transaction is in 'REVERTED' state", async function () {
+            let transaction = await contractUnderTest.transactions(
+              transactionId
+            );
+            expect(transaction.status).to.equal(TransactionStatus.REVERTED);
           });
         });
       }); // When replacing an owner
@@ -1451,7 +1521,15 @@ describe("Multisig Wallet", () => {
             it("An `ExecutionFailure` event is emitted", async function () {
               expectEvent(receipt, "ExecutionFailure", {
                 transactionId: transactionId,
+                reason: "Not enough owners",
               });
+            });
+
+            it("The transaction is in 'REVERTED' state", async function () {
+              let transaction = await contractUnderTest.transactions(
+                transactionId
+              );
+              expect(transaction.status).to.equal(TransactionStatus.REVERTED);
             });
           }
         );
@@ -1471,7 +1549,15 @@ describe("Multisig Wallet", () => {
             it("An `ExecutionFailure` event is emitted", async function () {
               expectEvent(receipt, "ExecutionFailure", {
                 transactionId: transactionId,
+                reason: "No revert reason given",
               });
+            });
+
+            it("The transaction is in 'REVERTED' state", async function () {
+              let transaction = await contractUnderTest.transactions(
+                transactionId
+              );
+              expect(transaction.status).to.equal(TransactionStatus.REVERTED);
             });
           }
         );
@@ -1486,7 +1572,15 @@ describe("Multisig Wallet", () => {
           it("An `ExecutionFailure` event is emitted", async function () {
             expectEvent(receipt, "ExecutionFailure", {
               transactionId: transactionId,
+              reason: "Required can't be zero",
             });
+          });
+
+          it("The transaction is in 'REVERTED' state", async function () {
+            let transaction = await contractUnderTest.transactions(
+              transactionId
+            );
+            expect(transaction.status).to.equal(TransactionStatus.REVERTED);
           });
         });
       }); // When changing the number of required signatures
@@ -1495,7 +1589,7 @@ describe("Multisig Wallet", () => {
 
   if (testFilter.testWalletFeatures) {
     describe("Withdrawing from the wallet", function () {
-      let coinContract: MockERC20;
+      let coinContract: ViciERC20MintableUtilityToken;
       let nftContract: MockERC721;
       let sftContract: MockERC1155;
       let contractUnderTest: MultisigWallet;
@@ -1504,6 +1598,8 @@ describe("Multisig Wallet", () => {
       let expectedRecipient: string;
       let expectedWithdrawnAmount: BigNumberish;
       let expectedRemainingAmount: BigNumberish;
+      let bannedUser: Wallet;
+      let oligarch: Wallet;
 
       const CURRENCY_AMOUNT = ethers.utils.parseEther("1.0");
       const NFT_TOKEN = BigNumber.from("12345");
@@ -1511,16 +1607,24 @@ describe("Multisig Wallet", () => {
       const SFT_AMOUNT = BigNumber.from(10);
 
       this.beforeAll(async function () {
+        bannedUser = Wallet.createRandom();
+        oligarch = Wallet.createRandom();
+        await accessServer.grantGlobalRole(BANNED, bannedUser.address);
+        await sanctionsOracle.addToSanctionsList([oligarch.address]);
+
         contractUnderTest = await initMultisig({});
         await contractOwner.sendTransaction({
           to: contractUnderTest.address,
           value: CURRENCY_AMOUNT,
         });
 
-        let erc20Factory = (await ethers.getContractFactory(
-          "MockERC20"
-        )) as MockERC20__factory;
-        coinContract = await erc20Factory.deploy("Space Bucks", "SBx", 18);
+        coinContract = await deployERC20(
+          accessServer,
+          "Space Bucks",
+          "SBx",
+          18,
+          BigNumber.from("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF")
+        );
 
         await coinContract.mint(contractUnderTest.address, CURRENCY_AMOUNT);
 
@@ -1540,6 +1644,11 @@ describe("Multisig Wallet", () => {
           SFT_AMOUNT
         );
       }); // beforeAll
+
+      this.afterAll(async function () {
+        await accessServer.revokeGlobalRole(BANNED, bannedUser.address);
+        await sanctionsOracle.removeFromSanctionsList([oligarch.address]);
+      });
 
       context("When withdrawing native currency", async function () {
         function withdrawWasSuccessful() {
@@ -1656,6 +1765,111 @@ describe("Multisig Wallet", () => {
           });
 
           withdrawWasSuccessful();
+        });
+
+        context("If the ERC20 transfer rolls back due to ...", function () {
+          let reason: string;
+
+          function withdrawFailed() {
+            it("An `ExecutionFailure` event is emitted", async function () {
+              expectEvent(receipt, "ExecutionFailure", {
+                transactionId: transactionId,
+                reason: reason,
+              });
+            });
+
+            it("The transaction is in 'REVERTED' state", async function () {
+              let transaction = await contractUnderTest.transactions(
+                transactionId
+              );
+              expect(transaction.status).to.equal(TransactionStatus.REVERTED);
+            });
+          }
+
+          context("... insufficient balance", function () {
+            this.beforeAll(async function () {
+              reason = "insufficient balance";
+              receipt = await doERC20Withdrawal(
+                contractUnderTest,
+                FIFTY_ONE_RANDOS[11],
+                (
+                  await coinContract.balanceOf(contractUnderTest.address)
+                ).add(1000),
+                coinContract.address
+              );
+              transactionId = await contractUnderTest.transactionCount();
+            });
+
+            this.afterAll(async function () {
+              reason = undefined as unknown as string;
+              transactionId = undefined as unknown as BigNumberish;
+            });
+
+            withdrawFailed();
+          });
+
+          context("... transfer to null address", function () {
+            this.beforeAll(async function () {
+              reason = "ERC20: transfer to the zero address";
+              receipt = await doERC20Withdrawal(
+                contractUnderTest,
+                "0x0000000000000000000000000000000000000000",
+                ethers.utils.parseEther("0.1"),
+                coinContract.address
+              );
+              transactionId = await contractUnderTest.transactionCount();
+            });
+
+            this.afterAll(async function () {
+              reason = undefined as unknown as string;
+              transactionId = undefined as unknown as BigNumberish;
+            });
+
+            withdrawFailed();
+          });
+
+          context(
+            "... the recipient is banned by the ERC20 Contract",
+            function () {
+              this.beforeAll(async function () {
+                reason = "AccessControl: banned";
+                receipt = await doERC20Withdrawal(
+                  contractUnderTest,
+                  bannedUser.address,
+                  ethers.utils.parseEther("0.1"),
+                  coinContract.address
+                );
+                transactionId = await contractUnderTest.transactionCount();
+              });
+
+              this.afterAll(async function () {
+                reason = undefined as unknown as string;
+                transactionId = undefined as unknown as BigNumberish;
+              });
+
+              withdrawFailed();
+            }
+          );
+
+          context("... the recipient is under OFAC sanctions", function () {
+            this.beforeAll(async function () {
+              reason = "OFAC sanctioned address";
+              receipt = await doERC20Withdrawal(
+                contractUnderTest,
+                oligarch.address,
+                ethers.utils.parseEther("0.1"),
+                coinContract.address
+              );
+              transactionId = await contractUnderTest.transactionCount();
+            });
+
+            this.afterAll(async function () {
+              reason = undefined as unknown as string;
+              transactionId = undefined as unknown as BigNumberish;
+            });
+
+            withdrawFailed();
+          });
         });
       }); // When withdrawing ERC20 tokens
 
@@ -1780,7 +1994,7 @@ describe("Multisig Wallet", () => {
     describe("Managing an external contract", function () {
       let proxyAdmin: ProxyAdmin;
       let proxyAdminABI: ContractABI;
-      let viciCoin: ViciERC20UtilityToken;
+      let viciCoin: ViciERC20MintableUtilityToken;
       let viciCoinABI: ContractABI;
       let tokenContract: MockERC721;
       let tokenContractABI: ContractABI;
@@ -2154,6 +2368,34 @@ describe("Multisig Wallet", () => {
         );
       }); // beforeAll
 
+      function checkEnumeratedResults(
+        expectedTxCount: number,
+        txStatus: number,
+        testName: string
+      ) {
+        it("The returned tx list has the expected length", async function () {
+          expect(txIdList.length).to.equal(expectedTxCount);
+        });
+
+        if (txStatus != TransactionStatus.EVERY_STATUS) {
+          it(`The returned transactions are all in the ${testName} state`, async function () {
+            for (let txId of txIdList) {
+              let transaction = await contractUnderTest.transactions(txId);
+              expect(transaction.status).to.equal(txStatus);
+            }
+          });
+        } else {
+          // it("Here are the transactions", async function () {
+          //   for (let txId of txIdList) {
+          //     let transaction = await contractUnderTest.transactions(txId);
+          //     console.log(
+          //       util.inspect(transaction, { depth: null, colors: true })
+          //     );
+          //   }
+          // });
+        }
+      }
+
       function checkEnumeratedTransactions(
         expectedTxCount: number,
         txStatus: number
@@ -2172,11 +2414,14 @@ describe("Multisig Wallet", () => {
           case TransactionStatus.VETOED:
             testName = "vetoed";
             break;
+          case TransactionStatus.REVERTED:
+            testName = "reverted";
+            break;
           default:
             testName = "all";
         }
 
-        context(`When enumerating ${testName} transactions`, function () {
+        context(`When enumerating all ${testName} transactions`, function () {
           this.beforeAll(async function () {
             txCount = await contractUnderTest.getTransactionCount(txStatus);
             txIdList = await contractUnderTest.getTransactionIds(
@@ -2194,34 +2439,60 @@ describe("Multisig Wallet", () => {
             expect(txCount).to.equal(expectedTxCount);
           });
 
-          it("The returned tx list has the expected length", async function () {
-            expect(txIdList.length).to.equal(expectedTxCount);
+          checkEnumeratedResults(expectedTxCount, txStatus, testName);
           });
 
-          if (txStatus != TransactionStatus.EVERY_STATUS) {
-            it(`The returned transactions are all in the ${testName} state`, async function () {
-              for (let txId of txIdList) {
-                let transaction = await contractUnderTest.transactions(txId);
-                expect(transaction.status).to.equal(txStatus);
-              }
+        context(
+          `When enumerating a subset of ${testName} transactions from beginning`,
+          function () {
+            let expectedCount = Math.max(0, expectedTxCount - 1);
+            this.beforeAll(async function () {
+              txCount = await contractUnderTest.getTransactionCount(txStatus);
+              txCount = Math.max(0, txCount.toNumber() - 1);
+              txIdList = await contractUnderTest.getTransactionIds(
+                0,
+                txCount,
+                txStatus
+              );
             });
-          } else {
-            // it("Here are the transactions", async function () {
-            //   for (let txId of txIdList) {
-            //     let transaction = await contractUnderTest.transactions(txId);
-            //     console.log(
-            //       util.inspect(transaction, { depth: null, colors: true })
-            //     );
-            //   }
-            // });
+
+            this.afterAll(async function () {
+              txIdList = undefined as unknown as Array<BigNumber>;
+            });
+
+            checkEnumeratedResults(expectedCount, txStatus, testName);
+              }
+        );
+
+        if (expectedTxCount > 0) {
+          context(
+            `When enumerating a subset of ${testName} transactions to end`,
+            function () {
+              let expectedCount = Math.max(0, expectedTxCount - 1);
+              this.beforeAll(async function () {
+                txCount = await contractUnderTest.getTransactionCount(txStatus);
+                txIdList = await contractUnderTest.getTransactionIds(
+                  1,
+                  txCount,
+                  txStatus
+                );
+            });
+
+              this.afterAll(async function () {
+                txIdList = undefined as unknown as Array<BigNumber>;
+              });
+
+              checkEnumeratedResults(expectedCount, txStatus, testName);
           }
-        });
+          );
+        }
       } // checkEnumeratedTransactions
 
       checkEnumeratedTransactions(6, TransactionStatus.EVERY_STATUS);
       checkEnumeratedTransactions(2, TransactionStatus.UNCONFIRMED);
-      checkEnumeratedTransactions(2, TransactionStatus.CONFIRMED);
+      checkEnumeratedTransactions(0, TransactionStatus.CONFIRMED);
       checkEnumeratedTransactions(2, TransactionStatus.EXECUTED);
+      checkEnumeratedTransactions(2, TransactionStatus.REVERTED);
     });
   } // testFilter.testEnumerateTx
 

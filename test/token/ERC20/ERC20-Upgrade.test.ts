@@ -9,6 +9,7 @@ import {
   proxyDeploy,
   proxyUpgrade,
   getImplementationAddress,
+  proxyUpgradeWithInitSignature,
 } from "../../test-utils/CommonContracts";
 import { getPermitDigest, sign } from "./ERC20-Permit-Functions";
 import {
@@ -16,7 +17,8 @@ import {
   ERC20UtilityOperations,
   MockERC20OpsForUpgrade,
   MockViciERC20,
-  ViciERC20UtilityToken,
+  MockViciERC20Reinit,
+  ViciERC20MintableUtilityToken,
 } from "../../../typechain-types";
 
 const hodler1OriginalBalance = BigNumber.from("1000");
@@ -27,6 +29,7 @@ const name = "Upgradeable ERC20";
 const symbol = "UPG";
 const decimals = 4;
 const max_supply = 100000000;
+let versionCounter = 1;
 
 const deadline = BigNumber.from(
   "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
@@ -42,7 +45,7 @@ describe("ERC20 Upgradeable Test", function () {
   let operator: SignerWithAddress;
 
   let accessServer: AccessServer;
-  let tokenContract: ViciERC20UtilityToken | MockViciERC20;
+  let tokenContract: ViciERC20MintableUtilityToken | MockViciERC20;
   let ownerOperatorContract: ERC20UtilityOperations | MockERC20OpsForUpgrade;
 
   let originalImplAddress: string;
@@ -106,8 +109,19 @@ describe("ERC20 Upgradeable Test", function () {
   async function upgradeERC20() {
     tokenContract = (await proxyUpgrade(
       tokenContract,
-      "ViciERC20UtilityToken"
-    )) as ViciERC20UtilityToken;
+      "ViciERC20MintableUtilityToken"
+    )) as ViciERC20MintableUtilityToken;
+  }
+
+  async function upgradeERC20Reinit() {
+    versionCounter += 1;
+    tokenContract = (await proxyUpgradeWithInitSignature(
+      tokenContract,
+      "MockViciERC20Reinit",
+      "reinit(string,uint8)",
+      `${symbol}v${versionCounter}`,
+      versionCounter
+    )) as MockViciERC20Reinit;
   }
 
   async function upgradeOwnerOperator() {
@@ -365,4 +379,18 @@ describe("ERC20 Upgradeable Test", function () {
     erc20PostUpdateCheck();
     ownerOperatorPostUpdateCheck();
   }); // After upgrading ERC20 followed by OwnerOperator
+
+  context("After upgrading ERC20 with reinit", function () {
+    this.beforeAll(async function () {
+      await doSetup();
+      await upgradeERC20Reinit();
+    });
+
+    checkExpectedState();
+
+    it("The reinit function was called", async function () {
+      let expectedSymbol = `${symbol}v${versionCounter}`;
+      expect(await tokenContract.symbol()).to.equal(expectedSymbol);
+    });
+  });
 }); // ERC20 Upgradeable Test

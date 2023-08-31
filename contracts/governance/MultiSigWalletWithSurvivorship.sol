@@ -75,7 +75,9 @@ enum TransactionStatus {
     // 3: Executed
     EXECUTED,
     // 4: Vetoed, cannot be executed
-    VETOED
+    VETOED,
+    // 5: Reverted, may be tried again
+    REVERTED
 }
 
 contract MultiSigWalletWithSurvivorship is Initializable, Wallet {
@@ -104,7 +106,7 @@ contract MultiSigWalletWithSurvivorship is Initializable, Wallet {
     /**
      * @notice Emitted when a confirmed transaction failed to execute.
      */
-    event ExecutionFailure(uint256 indexed transactionId);
+    event ExecutionFailure(uint256 indexed transactionId, string reason);
 
     /**
      * @notice Emitted when a transaction has been vetoed.
@@ -172,7 +174,7 @@ contract MultiSigWalletWithSurvivorship is Initializable, Wallet {
         bytes data;
     }
 
-    uint256 public constant MAX_OWNER_COUNT = 50;
+    uint256 internal constant MAX_OWNER_COUNT = 50;
 
     /**
      * @dev All submitted transactions by id. Transaction ids are sequential
@@ -676,8 +678,6 @@ contract MultiSigWalletWithSurvivorship is Initializable, Wallet {
      * Requirements:
      * - Caller MUST be an owner.
      * - `transactionId` MUST exist.
-     * -
-     * - Caller MUST have confirmed the transaction.
      * - `transactionId` MUST exist.
      * - The transaction MUST NOT have already been successfully executed.
      * - The transaction MUST NOT have been vetoed.
@@ -688,7 +688,6 @@ contract MultiSigWalletWithSurvivorship is Initializable, Wallet {
         public
         virtual
         onlyOwner
-        confirmed(transactionId, msg.sender)
         transactionExists(transactionId)
         notExecuted(transactionId)
         notVetoed(transactionId)
@@ -806,16 +805,17 @@ contract MultiSigWalletWithSurvivorship is Initializable, Wallet {
         uint256 count = 0;
         uint256 i;
         uint256 maxResults = to - from;
-        for (i = 1; i <= transactionCount && count <= maxResults; i++)
+        for (i = 1; i <= transactionCount && count <= to; i++)
             if (
                 status == TransactionStatus.EVERY_STATUS ||
-                transactions[i].status == status
+                    transactions[i].status == status
             ) {
                 transactionIdsTemp[count] = i;
                 count += 1;
             }
-        _transactionIds = new uint256[](count);
-        for (i = from; i < count; i++)
+
+        _transactionIds = new uint256[](maxResults);
+        for (i = from; i < maxResults+from; i++)
             _transactionIds[i - from] = transactionIdsTemp[i];
     }
 
@@ -988,14 +988,26 @@ contract MultiSigWalletWithSurvivorship is Initializable, Wallet {
 
     function _executeTransaction(uint256 transactionId) internal virtual {
         Transaction storage txn = transactions[transactionId];
-        (bool executed, ) = txn.destination.call{value: txn.value}(txn.data);
+        (bool executed, bytes memory result) = txn.destination.call{
+            value: txn.value
+        }(txn.data);
 
         if (executed) {
             txn.status = TransactionStatus.EXECUTED;
             emit Execution(transactionId);
         } else {
-            transactions[transactionId].status = TransactionStatus.CONFIRMED;
-            emit ExecutionFailure(transactionId);
+            transactions[transactionId].status = TransactionStatus.REVERTED;
+            if (result.length < 68) {
+                emit ExecutionFailure(transactionId, "No revert reason given");
+            } else {
+                assembly {
+                    result := add(result, 0x04)
+                }
+                emit ExecutionFailure(
+                    transactionId,
+                    abi.decode(result, (string))
+                );
+            }
         }
     }
 
