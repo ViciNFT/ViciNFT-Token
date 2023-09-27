@@ -44,7 +44,7 @@ There are also the following disadvantages to this approach:
 - Additional attack surfaces
 
 ### Other differences
-- Collapsed the LzApp <-- NonblockingLzApp hierarchy, making non-blocking mode. If we have a future use case requiring blocking mode, we can override LzTunnel._receiveMessage to implement it.
+- Collapsed the LzApp <-- NonblockingLzApp hierarchy, making non-blocking mode the default. If we have a future use case requiring blocking mode, we can override LzTunnel._receiveMessage to implement it.
 - Added role-based access management and the LAYERZERO_ADMIN_ROLE to control access to the configuration functions.
 - The `payload` is an ABI-encoded function call on the token contract, rather than ABI-encoded parameters for a receive function on the tunnel contract.
 - Added mappings between the standard chain ids and LayerZero's nonstandard chain ids. The `LzTokenTunnel.sendFrom` function takes the standard token id. Function that expect a LayerZero chain id take a parameter type of `uint16`, and functions that expect a standard chain id take `uint256`.
