@@ -3,13 +3,13 @@ import { BigNumber, ContractReceipt, ContractTransaction } from "ethers";
 import { expect } from "chai";
 import hardhat from "hardhat";
 
-import { MOCK_CONTRACTS, deployERC20 } from "../../test-utils/CommonContracts";
+import { MOCK_CONTRACTS, deployERC20v1 } from "../../test-utils/CommonContracts";
 
 import { expectEvent } from "../../helper";
 import {
   AccessServer,
   MockSanctions,
-  ViciERC20MintableUtilityToken,
+  ViciERC20v01,
 } from "../../../typechain-types";
 
 const ADMIN =
@@ -47,7 +47,7 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
   let accessServer: AccessServer;
   let sanctionsOracle: MockSanctions;
 
-  let initTokenContract: () => Promise<ViciERC20MintableUtilityToken>;
+  let initTokenContract: () => Promise<ViciERC20v01>;
 
   before(async function () {
     signers = await hardhat.ethers.getSigners();
@@ -67,8 +67,8 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
     await sanctionsOracle.addToSanctionsList([oligarch.address]);
     await accessServer.setSanctionsList(sanctionsOracle.address);
 
-    initTokenContract = async function (): Promise<ViciERC20MintableUtilityToken> {
-      let newContract = await deployERC20(
+    initTokenContract = async function (): Promise<ViciERC20v01> {
+      let newContract = await deployERC20v1(
         accessServer,
         name,
         symbol,
@@ -99,7 +99,7 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
 
   describe("Postive tests", function () {
     context("When calling `recoverSanctionedAssets()` as owner", function () {
-      let contractUnderTest: ViciERC20MintableUtilityToken;
+      let contractUnderTest: ViciERC20v01;
       let fromAccount: string;
       let toAccount: string;
       let recoverAmount: BigNumber;
@@ -205,7 +205,7 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
       balance: BigNumber;
     }
 
-    let contractUnderTest: ViciERC20MintableUtilityToken;
+    let contractUnderTest: ViciERC20v01;
     let operatorAccounts: Map<String, SignerWithAddress> = new Map();
     let testAccounts: Map<string, string> = new Map();
     let testCase: NegativeTestCase = {

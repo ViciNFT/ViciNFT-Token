@@ -13,7 +13,7 @@ import {IAccessServer} from "./IAccessServer.sol";
  * @notice (c) 2023 ViciNFT https://vicinft.com/
  * @author Josh Davis <josh.davis@vicinft.com>
  *
- * @dev This contract implements OpenZeppelin's IAccessControl and 
+ * @dev This contract implements OpenZeppelin's IAccessControl and
  * IAccessControlEnumerable interfaces as well as the behavior of their
  * Ownable contract.
  * @dev The differences are:
@@ -24,7 +24,7 @@ import {IAccessServer} from "./IAccessServer.sol";
  * - Contract owner cannot renounce ownership, can only transfer it.
  * - DEFAULT ADMIN role cannot be revoked from the Contract owner, nor can they
  *   renouce that role.
- * @dev see `AccessControl`, `AccessControlEnumerable`, and `Ownable` for 
+ * @dev see `AccessControl`, `AccessControlEnumerable`, and `Ownable` for
  * additional documentation.
  */
 abstract contract ViciAccess is Context, IViciAccess, ERC165 {
@@ -42,17 +42,15 @@ abstract contract ViciAccess is Context, IViciAccess, ERC165 {
      * Initialization
      * ##############################################################*/
 
-    function __ViciAccess_init(IAccessServer _accessServer)
-        internal
-        onlyInitializing
-    {
+    function __ViciAccess_init(
+        IAccessServer _accessServer
+    ) internal onlyInitializing {
         __ViciAccess_init_unchained(_accessServer);
     }
 
-    function __ViciAccess_init_unchained(IAccessServer _accessServer)
-        internal
-        onlyInitializing
-    {
+    function __ViciAccess_init_unchained(
+        IAccessServer _accessServer
+    ) internal onlyInitializing {
         accessServer = _accessServer;
         accessServer.register(_msgSender());
     }
@@ -60,13 +58,9 @@ abstract contract ViciAccess is Context, IViciAccess, ERC165 {
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view virtual override returns (bool) {
         return
             interfaceId == type(IAccessControl).interfaceId ||
             interfaceId == type(IAccessControlEnumerable).interfaceId ||
@@ -136,12 +130,10 @@ abstract contract ViciAccess is Context, IViciAccess, ERC165 {
     /**
      * @dev reverts if the account is not the owner and doesn't have the required role.
      */
-    function enforceOwnerOrRole(bytes32 role, address account)
-        public
-        view
-        virtual
-        override
-    {
+    function enforceOwnerOrRole(
+        bytes32 role,
+        address account
+    ) public view virtual override {
         if (account != owner()) {
             _checkRole(role, account);
         }
@@ -157,51 +149,37 @@ abstract contract ViciAccess is Context, IViciAccess, ERC165 {
     /**
      * @dev Revert if the address is on the OFAC sanctions list
      */
-    function enforceIsNotSanctioned(address account)
-        public
-        view
-        virtual
-        override
-    {
+    function enforceIsNotSanctioned(
+        address account
+    ) public view virtual override {
         accessServer.enforceIsNotSanctioned(account);
     }
 
     /**
      * @dev returns true if the account is banned.
      */
-    function isBanned(address account)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
+    function isBanned(
+        address account
+    ) public view virtual override returns (bool) {
         return accessServer.isBannedForMe(account);
     }
 
     /**
      * @dev returns true if the account is on the OFAC sanctions list.
      */
-    function isSanctioned(address account)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
+    function isSanctioned(
+        address account
+    ) public view virtual override returns (bool) {
         return accessServer.isSanctioned(account);
     }
 
     /**
      * @dev Returns `true` if `account` has been granted `role`.
      */
-    function hasRole(bytes32 role, address account)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
+    function hasRole(
+        bytes32 role,
+        address account
+    ) public view virtual override returns (bool) {
         return accessServer.hasRoleForMe(role, account);
     }
 
@@ -213,7 +191,9 @@ abstract contract ViciAccess is Context, IViciAccess, ERC165 {
      *  /^AccessControl: account (0x[0-9a-f]{40}) is missing role (0x[0-9a-f]{64})$/
      */
     function _checkRole(bytes32 role, address account) internal view virtual {
-        accessServer.checkRoleForMe(role, account);
+        if (role != ANY_ROLE) {
+            accessServer.checkRoleForMe(role, account);
+        }
     }
 
     /* ################################################################
@@ -252,13 +232,9 @@ abstract contract ViciAccess is Context, IViciAccess, ERC165 {
      *
      * To change a role's admin, use {_setRoleAdmin}.
      */
-    function getRoleAdmin(bytes32 role)
-        public
-        view
-        virtual
-        override
-        returns (bytes32)
-    {
+    function getRoleAdmin(
+        bytes32 role
+    ) public view virtual override returns (bytes32) {
         return accessServer.getMyRoleAdmin(role);
     }
 
@@ -288,13 +264,10 @@ abstract contract ViciAccess is Context, IViciAccess, ERC165 {
      * https://forum.openzeppelin.com/t/iterating-over-elements-on-enumerableset-in-openzeppelin-contracts/2296[forum post]
      * for more information.
      */
-    function getRoleMember(bytes32 role, uint256 index)
-        public
-        view
-        virtual
-        override
-        returns (address)
-    {
+    function getRoleMember(
+        bytes32 role,
+        uint256 index
+    ) public view virtual override returns (address) {
         return accessServer.getMyRoleMember(role, index);
     }
 
@@ -302,13 +275,9 @@ abstract contract ViciAccess is Context, IViciAccess, ERC165 {
      * @dev Returns the number of accounts that have `role`. Can be used
      * together with {getRoleMember} to enumerate all bearers of a role.
      */
-    function getRoleMemberCount(bytes32 role)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function getRoleMemberCount(
+        bytes32 role
+    ) public view virtual override returns (uint256) {
         return accessServer.getMyRoleMemberCount(role);
     }
 

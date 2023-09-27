@@ -4,12 +4,11 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/ERC677ReceiverInterface.sol";
 
-import "../../bridging/IBridgeable.sol";
-import "../../common/BaseViciContract.sol";
-import "../../utils/cryptography/EIP712.sol";
-import "../../utils/Monotonic.sol";
-import "./extensions/IERC677.sol";
-import "./IERC20Operations.sol";
+import "../../../common/BaseViciContract.sol";
+import "../../../utils/cryptography/EIP712.sol";
+import "../../../utils/Monotonic.sol";
+import "../extensions/IERC677.sol";
+import "../IERC20Operations.sol";
 
 /**
  * @title Vici ERC20
@@ -23,19 +22,16 @@ import "./IERC20Operations.sol";
  * - DEFAULT_ADMIN_ROLE: administers the other roles
  * - MODERATOR_ROLE_NAME: administers the banned role
  * - MINTER_ROLE_NAME: can mint/burn tokens
- * - BRIDGE_CONTRACT: a registered bridge
  * - BANNED_ROLE: cannot send or receive tokens
  */
-contract ViciERC20 is
-    BaseViciContract,
-    IERC20Metadata,
-    IERC677,
-    IBridgeable,
-    EIP712
-{
+contract ViciERC20v01 is BaseViciContract, IERC20Metadata, IERC677, EIP712 {
     using Monotonic for Monotonic.Increaser;
 
-    event SanctionedAssetsRecovered(address from, address to, uint256 value);
+    event SanctionedAssetsRecovered(
+        address from,
+        address to,
+        uint256 value
+    );
 
     // Creator can create a new token type and mint an initial supply.
     bytes32 public constant MINTER_ROLE_NAME = "minter";
@@ -62,18 +58,15 @@ contract ViciERC20 is
 
     IERC20Operations public tokenData;
 
-    bool public isMain;
-    address public vault;
-
     /* ################################################################
      * Initialization
      * ##############################################################*/
 
     /**
-     * @dev Use this one when deploying for the first time on a new chain.
-     * @dev Use reinit when upgrading from a v1 token
+     * @dev the initializer function
      * @param _accessServer The Access Server contract
-     * @param _tokenData The ERC20 Operations contract. You MUST set this contract as the owner of that contract.
+     * @param _tokenData The ERC20 Operations contract. You MUST set this
+     * contract as the owner of that contract.
      * @param _name the name of the token.
      * @param _symbol the token symbol.
      * @param _decimals the number of decimals.
@@ -83,17 +76,9 @@ contract ViciERC20 is
         IERC20Operations _tokenData,
         string calldata _name,
         string calldata _symbol,
-        uint8 _decimals,
-        bool _isMain
-    ) public virtual reinitializer(2) {
-        __ViciERC20_init(
-            _accessServer,
-            _tokenData,
-            _name,
-            _symbol,
-            _decimals,
-            _isMain
-        );
+        uint8 _decimals
+    ) public virtual initializer {
+        __ViciERC20_init(_accessServer, _tokenData, _name, _symbol, _decimals);
     }
 
     function __ViciERC20_init(
@@ -101,47 +86,23 @@ contract ViciERC20 is
         IERC20Operations _tokenData,
         string calldata _name,
         string calldata _symbol,
-        uint8 _decimals,
-        bool _isMain
+        uint8 _decimals
     ) internal onlyInitializing {
         EIP712.__EIP712_init(_name, "1");
         BaseViciContract.__BaseViciContract_init(_accessServer);
-        __ViciERC20_init_unchained(
-            _tokenData,
-            _name,
-            _symbol,
-            _decimals,
-            _isMain
-        );
+        __ViciERC20_init_unchained(_tokenData, _name, _symbol, _decimals);
     }
 
     function __ViciERC20_init_unchained(
         IERC20Operations _tokenData,
         string calldata _name,
         string calldata _symbol,
-        uint8 _decimals,
-        bool _isMain
+        uint8 _decimals
     ) internal onlyInitializing {
         tokenData = _tokenData;
         name = _name;
         symbol = _symbol;
         decimals = _decimals;
-        __ViciCoinV02_reinit(_isMain);
-    }
-
-    /**
-     * @dev Use this one when upgrading from a v1 token
-     * @dev Use initialize when deploying for the first time on a new chain.
-     */
-    function reinit(bool _isMain) public reinitializer(2) {
-        __ViciCoinV02_reinit(_isMain);
-    }
-
-    function __ViciCoinV02_reinit(bool _isMain) internal onlyInitializing {
-        isMain = _isMain;
-        if (isMain) {
-            vault = address(tokenData);
-        }
     }
 
     /* ################################################################
@@ -160,14 +121,6 @@ contract ViciERC20 is
      */
     function totalSupply() public view virtual returns (uint256) {
         return tokenData.totalSupply();
-    }
-
-    function circulatingSupply() public view virtual returns (uint256) {
-        if (isMain) {
-            return totalSupply() - balanceOf(vault);
-        }
-
-        return totalSupply();
     }
 
     /**
@@ -210,8 +163,33 @@ contract ViciERC20 is
     }
 
     /* ################################################################
-     * Bridging / Transferring
+     * Minting / Burning / Transferring
      * ##############################################################*/
+
+    /**
+     * @notice Safely mints a new token and transfers it to `toAddress`.
+     * @param toAddress The account to receive the newly minted token.
+     * @param amount The id of the new token.
+     *
+     * Requirements:
+     *
+     * - Contract MUST NOT be paused.
+     * - Calling user MUST be owner or have the minter role.
+     * - Calling user MUST NOT be banned.
+     * - `toAddress` MUST NOT be 0x0.
+     * - `toAddress` MUST NOT be banned.
+     */
+    function mint(
+        address toAddress,
+        uint256 amount
+    ) public virtual whenNotPaused {
+        tokenData.mint(
+            this,
+            ERC20MintData(_msgSender(), MINTER_ROLE_NAME, toAddress, amount)
+        );
+
+        _post_mint_hook(toAddress, amount);
+    }
 
     /**
      * @dev See {IERC20-transfer}.
@@ -239,6 +217,7 @@ contract ViciERC20 is
      *
      * Requirements
      *
+     * - Contract MUST NOT be paused.
      * - `fromAddress` and `toAddress` MUST NOT be the zero address.
      * - `toAddress`, `fromAddress`, and calling user MUST NOT be banned.
      * - `_tokenId` MUST belong to `fromAddress`.
@@ -251,7 +230,7 @@ contract ViciERC20 is
         address fromAddress,
         address toAddress,
         uint256 amount
-    ) public virtual override returns (bool) {
+    ) public virtual override whenNotPaused returns (bool) {
         tokenData.transfer(
             this,
             ERC20TransferData(_msgSender(), fromAddress, toAddress, amount)
@@ -275,79 +254,28 @@ contract ViciERC20 is
     }
 
     /**
-     * Requirements:
-     * - caller MUST be a registered bridge contract
-     * -
+     * @notice Burns the identified token.
+     * @param amount The amount of tokens to be burned.
+     * Emits a {Transfer} event.
      *
-     * @inheritdoc IBridgeable
+     * Requirements:
+     *
+     * - Contract MUST NOT be paused.
+     * - Calling user MUST be owner or have the minter role.
+     * - Calling user MUST NOT be banned.
+     * - Calling user MUST own the token or be authorized by the owner to
+     *     transfer the token.
      */
-    function sentToBridge(
-        BridgeArgs calldata args
-    ) public payable onlyRole(BRIDGE_CONTRACT) {
-        if (isMain) {
-            tokenData.transfer(
-                this,
-                ERC20TransferData(
-                    args.caller,
-                    args.fromAddress,
-                    vault,
-                    args.amount
-                )
-            );
-            _post_transfer_hook(args.fromAddress, vault, args.amount);
-        } else {
-            tokenData.burn(
-                this,
-                ERC20BurnData(
-                    args.caller,
-                    ANY_ROLE,
-                    args.fromAddress,
-                    args.amount
-                )
-            );
-            _post_burn_hook(args.fromAddress, args.amount);
-        }
-
-        emit SentToBridge(
-            args.fromAddress,
-            args.toAddress,
-            1,
-            args.amount,
-            args.caller,
-            args.remoteChainId
+    function burn(
+        address fromAddress,
+        uint256 amount
+    ) public virtual whenNotPaused {
+        tokenData.burn(
+            this,
+            ERC20BurnData(_msgSender(), MINTER_ROLE_NAME, fromAddress, amount)
         );
-    }
 
-    function receivedFromBridge(
-        BridgeArgs calldata args
-    ) public payable onlyRole(BRIDGE_CONTRACT) {
-        if (isMain) {
-            tokenData.transfer(
-                this,
-                ERC20TransferData(vault, vault, args.toAddress, args.amount)
-            );
-            _post_transfer_hook(vault, args.toAddress, args.amount);
-        } else {
-            tokenData.mint(
-                this,
-                ERC20MintData(
-                    _msgSender(),
-                    ANY_ROLE,
-                    args.toAddress,
-                    args.amount
-                )
-            );
-            _post_mint_hook(args.toAddress, args.amount);
-        }
-
-        emit ReceivedFromBridge(
-            args.fromAddress,
-            args.toAddress,
-            1,
-            args.amount,
-            args.caller,
-            args.remoteChainId
-        );
+        _post_burn_hook(fromAddress, amount);
     }
 
     /* ################################################################
@@ -368,6 +296,7 @@ contract ViciERC20 is
     /**
      * Requirements
      *
+     * - Contract MUST NOT be paused.
      * - caller MUST be the token owner or be approved for all by the token
      *     owner.
      * - `operator` MUST NOT be the zero address.
@@ -378,7 +307,7 @@ contract ViciERC20 is
     function approve(
         address operator,
         uint256 amount
-    ) public virtual override returns (bool) {
+    ) public virtual override whenNotPaused returns (bool) {
         tokenData.permit(this, _msgSender(), operator, amount);
         emit Approval(_msgSender(), operator, amount);
         return true;
@@ -506,5 +435,5 @@ contract ViciERC20 is
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[43] private __gap;
+    uint256[44] private __gap;
 }

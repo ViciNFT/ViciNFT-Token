@@ -20,7 +20,7 @@ import {
 import {
   MOCK_CONTRACTS,
   PROXY_UPGRADE_EVENT,
-  deployERC20,
+  deployERC20v1,
   getProxyAdmin,
   proxyDeploy,
 } from "../test-utils/CommonContracts";
@@ -38,7 +38,7 @@ import {
   MultiSigWalletWithSurvivorship,
   ProxyAdmin,
   ProxyAdmin__factory,
-  ViciERC20MintableUtilityToken,
+  ViciERC20v01,
 } from "../../typechain-types";
 
 type MultisigWallet = MultiSigWalletWithSurvivorship | MockMultiSigWallet;
@@ -474,7 +474,9 @@ describe("Multisig Wallet", () => {
     ];
 
     accessServer = await MOCK_CONTRACTS.mockAccessServer();
-    await accessServer.addAdministrator(contractOwner.address);
+    if (!(await accessServer.isAdministrator(contractOwner.address))) {
+      await accessServer.addAdministrator(contractOwner.address);
+    }
     sanctionsOracle = await MOCK_CONTRACTS.mockSanctionsList();
     await accessServer.setSanctionsList(sanctionsOracle.address);
 
@@ -1589,7 +1591,7 @@ describe("Multisig Wallet", () => {
 
   if (testFilter.testWalletFeatures) {
     describe("Withdrawing from the wallet", function () {
-      let coinContract: ViciERC20MintableUtilityToken;
+      let coinContract: ViciERC20v01;
       let nftContract: MockERC721;
       let sftContract: MockERC1155;
       let contractUnderTest: MultisigWallet;
@@ -1618,7 +1620,7 @@ describe("Multisig Wallet", () => {
           value: CURRENCY_AMOUNT,
         });
 
-        coinContract = await deployERC20(
+        coinContract = await deployERC20v1(
           accessServer,
           "Space Bucks",
           "SBx",
@@ -1994,7 +1996,7 @@ describe("Multisig Wallet", () => {
     describe("Managing an external contract", function () {
       let proxyAdmin: ProxyAdmin;
       let proxyAdminABI: ContractABI;
-      let viciCoin: ViciERC20MintableUtilityToken;
+      let viciCoin: ViciERC20v01;
       let viciCoinABI: ContractABI;
       let tokenContract: MockERC721;
       let tokenContractABI: ContractABI;
@@ -2021,7 +2023,7 @@ describe("Multisig Wallet", () => {
         );
         proxyAdminABI = new ContractABI(proxyAdmin.interface);
 
-        viciCoin = await deployERC20(
+        viciCoin = await deployERC20v1(
           accessServer,
           "Foo Dollars",
           "Foo$",
@@ -2045,10 +2047,7 @@ describe("Multisig Wallet", () => {
           "MockERC721"
         )) as MockERC721__factory;
         tokenContract = await erc721Factory.deploy("FooNFT", "FNFT");
-        await tokenContract.mint(
-          contractUnderTest.address,
-          TOKEN_ID
-        );
+        await tokenContract.mint(contractUnderTest.address, TOKEN_ID);
         tokenContractABI = new ContractABI(tokenContract.interface);
       }); // beforeAll
 
@@ -2440,7 +2439,7 @@ describe("Multisig Wallet", () => {
           });
 
           checkEnumeratedResults(expectedTxCount, txStatus, testName);
-          });
+        });
 
         context(
           `When enumerating a subset of ${testName} transactions from beginning`,
@@ -2461,7 +2460,7 @@ describe("Multisig Wallet", () => {
             });
 
             checkEnumeratedResults(expectedCount, txStatus, testName);
-              }
+          }
         );
 
         if (expectedTxCount > 0) {
@@ -2476,14 +2475,14 @@ describe("Multisig Wallet", () => {
                   txCount,
                   txStatus
                 );
-            });
+              });
 
               this.afterAll(async function () {
                 txIdList = undefined as unknown as Array<BigNumber>;
               });
 
               checkEnumeratedResults(expectedCount, txStatus, testName);
-          }
+            }
           );
         }
       } // checkEnumeratedTransactions

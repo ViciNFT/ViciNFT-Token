@@ -8,6 +8,7 @@ import {
   ERC20UtilityOperations,
   ProxyAdmin,
   ViciERC20MintableUtilityToken,
+  ViciERC20v01,
   AccessServer,
   MockSanctions,
 } from "../../typechain-types";
@@ -104,6 +105,31 @@ export async function proxyDeployWithInitSignature(
   await result.deployed();
   // console.log("deployed", result);
   return result;
+}
+
+export async function deployERC20v1(
+  accessServer: Contract,
+  name: string,
+  symbol: string,
+  decimals: BigNumberish,
+  max_supply: BigNumberish,
+  erc20Name: string = "ViciERC20v01",
+  erc20OpsName: string = "ERC20UtilityOperations"
+): Promise<ViciERC20v01> {
+  let erc20Ops = (await proxyDeploy(
+    erc20OpsName,
+    max_supply
+  )) as ERC20UtilityOperations;
+  let erc20 = (await proxyDeploy(
+    erc20Name,
+    accessServer.address,
+    erc20Ops.address,
+    name,
+    symbol,
+    decimals
+  )) as ViciERC20v01;
+  erc20Ops.transferOwnership(erc20.address);
+  return erc20;
 }
 
 export async function deployERC20(

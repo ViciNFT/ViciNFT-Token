@@ -133,18 +133,24 @@ export class EventABI extends FragmentABI {
     }
 
     txEvent.event = this.name;
-    let eventData = txEvent.data;
-    if (!eventData || eventData == "0x") {
-      eventData = "";
-      for (let i = 1; i < txEvent.topics.length; i++) {
-        eventData += txEvent.topics[i].substring(2);
-      }
-      // console.log(
-      //   "After building tx data",
-      //   util.inspect(txEvent, { depth: null, colors: true })
-      // );
+    let eventData = "0x";
+    for (let i = 1; i < txEvent.topics.length; i++) {
+      eventData += txEvent.topics[i].substring(2);
     }
-    txEvent.args = this.decodeParameters(eventData) as Result;
+
+    if (txEvent.data && txEvent.data.length > 2) {
+      eventData += txEvent.data.substring(2);
+    }
+
+    // console.log(this.name, this.signature, eventData);
+    try {
+      txEvent.args = this.decodeParameters(eventData) as Result;
+    } catch (ex) {
+      expect(
+        false,
+        `${this.name} ${this.signature} could not parse ${eventData}`
+      ).to.be.true;
+    }
     return txEvent;
   }
 }
@@ -348,7 +354,17 @@ export function checkEvent(
   // console.log("args=", args);
   for (let [key, value] of Object.entries(values)) {
     // console.log(`is args[${key}] == ${value}?`);
-    expect(args).to.have.deep.property(key, value);
+    expect(args[key]).is.not.undefined;
+    let expectedValue = value ? value.toString() : "null";
+    let actuaValue = args[key] ? args[key].toString() : "null";
+    expect(
+      actuaValue,
+      `${key}: expected ${expectedValue} but was ${actuaValue}`
+    ).to.equal(expectedValue);
+    expect(
+      actuaValue.length,
+      `${key}: expected ${expectedValue} but was ${actuaValue}`
+    ).to.equal(expectedValue.length);
   }
 }
 

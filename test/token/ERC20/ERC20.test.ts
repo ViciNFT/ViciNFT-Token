@@ -8,13 +8,13 @@ import { expect } from "chai";
 import hardhat from "hardhat";
 const { constants } = require("@openzeppelin/test-helpers");
 
-import { MOCK_CONTRACTS, deployERC20 } from "../../test-utils/CommonContracts";
+import { MOCK_CONTRACTS, deployERC20v1 } from "../../test-utils/CommonContracts";
 
 import { expectEvent } from "../../helper";
 import {
   AccessServer,
   MockSanctions,
-  ViciERC20MintableUtilityToken,
+  ViciERC20v01,
 } from "../../../typechain-types";
 
 const ADMIN =
@@ -71,10 +71,10 @@ describe("Test ERC20 ", () => {
   let oligarch: SignerWithAddress;
 
   let accessServer: AccessServer;
-  let tokenContract: ViciERC20MintableUtilityToken;
+  let tokenContract: ViciERC20v01;
   let sanctionsOracle: MockSanctions;
 
-  let initTokenContract: () => Promise<ViciERC20MintableUtilityToken>;
+  let initTokenContract: () => Promise<ViciERC20v01>;
 
   before(async function () {
     // test setup
@@ -99,8 +99,8 @@ describe("Test ERC20 ", () => {
     await sanctionsOracle.addToSanctionsList([oligarch.address]);
     await accessServer.setSanctionsList(sanctionsOracle.address);
 
-    initTokenContract = async function (): Promise<ViciERC20MintableUtilityToken> {
-      let newContract = await deployERC20(
+    initTokenContract = async function (): Promise<ViciERC20v01> {
+      let newContract = await deployERC20v1(
         accessServer,
         name,
         symbol,
@@ -182,7 +182,7 @@ describe("Test ERC20 ", () => {
     });
 
     context("Transferring", function () {
-      let contractUnderTest: ViciERC20MintableUtilityToken;
+      let contractUnderTest: ViciERC20v01;
       let tx: ContractTransaction;
       let receipt: ContractReceipt;
 
@@ -234,7 +234,7 @@ describe("Test ERC20 ", () => {
       }
 
       type TransferFunction = (
-        contractUnderTest: ViciERC20MintableUtilityToken,
+        contractUnderTest: ViciERC20v01,
         owner: string,
         toWhom: string,
         amount: BigNumber,
@@ -531,7 +531,7 @@ describe("Test ERC20 ", () => {
     });
 
     context("Approving", function () {
-      let contractUnderTest: ViciERC20MintableUtilityToken;
+      let contractUnderTest: ViciERC20v01;
       let tx: ContractTransaction;
       let receipt: ContractReceipt;
       let expectedApproved: string;
@@ -737,7 +737,7 @@ describe("Test ERC20 ", () => {
   }); //describe
 
   describe("Test Minting", () => {
-    let contractUnderTest: ViciERC20MintableUtilityToken;
+    let contractUnderTest: ViciERC20v01;
     let tx: ContractTransaction;
     let receipt: ContractReceipt;
     let toWhom: string;
@@ -781,7 +781,7 @@ describe("Test ERC20 ", () => {
     }
 
     type MintFunction = (
-      contractUnderTest: ViciERC20MintableUtilityToken,
+      contractUnderTest: ViciERC20v01,
       operator: SignerWithAddress,
       toWhom: string,
       amount: BigNumber
@@ -857,7 +857,7 @@ describe("Test ERC20 ", () => {
   }); //describe
 
   describe("Test Burning", () => {
-    let contractUnderTest: ViciERC20MintableUtilityToken;
+    let contractUnderTest: ViciERC20v01;
     let tx: ContractTransaction;
     let receipt: ContractReceipt;
     let tokenOwner: string;

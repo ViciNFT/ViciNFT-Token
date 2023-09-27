@@ -1,7 +1,6 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import {
   BigNumber,
-  BigNumberish,
   ContractReceipt,
   ContractTransaction,
 } from "ethers";
@@ -10,7 +9,6 @@ import hardhat, { ethers } from "hardhat";
 
 import {
   MOCK_CONTRACTS,
-  deployERC20,
   proxyDeploy,
 } from "../../test-utils/CommonContracts";
 
@@ -18,8 +16,7 @@ import { expectEvent } from "../../helper";
 import {
   AccessServer,
   MockERC20UtilityOperations,
-  MockERC20UtilityOperations__factory,
-  ViciERC20MintableUtilityToken,
+  ViciERC20UtilityToken_v01,
 } from "../../../typechain-types";
 
 const ADMIN =
@@ -52,7 +49,7 @@ describe("Test ERC20 Utility Extensions", () => {
   let initOpsContract: () => Promise<MockERC20UtilityOperations>;
   let initTokenContract: (
     ops: MockERC20UtilityOperations
-  ) => Promise<ViciERC20MintableUtilityToken>;
+  ) => Promise<ViciERC20UtilityToken_v01>;
 
   before(async function () {
     signers = await hardhat.ethers.getSigners();
@@ -79,15 +76,15 @@ describe("Test ERC20 Utility Extensions", () => {
 
     initTokenContract = async function (
       ops: MockERC20UtilityOperations
-    ): Promise<ViciERC20MintableUtilityToken> {
+    ): Promise<ViciERC20UtilityToken_v01> {
       let newContract = (await proxyDeploy(
-        "ViciERC20MintableUtilityToken",
+        "ViciERC20UtilityToken_v01",
         accessServer.address,
         ops.address,
         "Vici Utility Token",
         "VCUT",
         18
-      )) as ViciERC20MintableUtilityToken;
+      )) as ViciERC20UtilityToken_v01;
 
       await ops.transferOwnership(newContract.address);
 
@@ -107,7 +104,7 @@ describe("Test ERC20 Utility Extensions", () => {
   }); // main before all
 
   describe("Airdropped locked tokens feature", function () {
-    let contractUnderTest: ViciERC20MintableUtilityToken;
+    let contractUnderTest: ViciERC20UtilityToken_v01;
     let ops: MockERC20UtilityOperations;
     let receipt: ContractReceipt;
 
@@ -662,7 +659,7 @@ describe("Test ERC20 Utility Extensions", () => {
   describe("Recover misplaced tokens feature", function () {
     describe("Postive tests", function () {
       context("When calling `recoverMisplacedTokens()` as owner", function () {
-        let contractUnderTest: ViciERC20MintableUtilityToken;
+        let contractUnderTest: ViciERC20UtilityToken_v01;
         let fromAccount: string;
         let toAccount: string;
         let recoverAmount: BigNumber;
@@ -744,7 +741,7 @@ describe("Test ERC20 Utility Extensions", () => {
         balance: BigNumber;
       }
 
-      let contractUnderTest: ViciERC20MintableUtilityToken;
+      let contractUnderTest: ViciERC20UtilityToken_v01;
       let operatorAccounts: Map<String, SignerWithAddress> = new Map();
       let testAccounts: Map<string, string> = new Map();
       let testCase: NegativeTestCase = {
