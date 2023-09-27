@@ -9,7 +9,7 @@ We may revisit in the future, but we don't consider this a risk because the owne
 
 ### VCNFT-15: Centralization risk for the AccessServer contract
 1. Transferred ownership to the multisignature wallet contract
-1. Removed the contract deployer as an administrator, leaving multisigunature wallet contract as the only administrator.
+1. Removed the contract deployer as an administrator, leaving multisignature wallet contract as the only administrator.
 
 ## Low
 ### VCNFT-5: Duplicate functionality for checking if address has role
