@@ -15,12 +15,15 @@ import {
   getPermitDigest,
 } from "./ERC20-Permit-Functions";
 
-import { MOCK_CONTRACTS, deployERC20v1 } from "../../test-utils/CommonContracts";
+import {
+  MOCK_CONTRACTS,
+  deployERC20,
+} from "../../test-utils/CommonContracts";
 import { expectEvent } from "../../helper";
 import {
   AccessServer,
   MockSanctions,
-  ViciERC20v01,
+  ViciERC20MintableUtilityToken,
 } from "../../../typechain-types";
 
 const AMOUNT = BigNumber.from(100);
@@ -50,18 +53,18 @@ describe("Test ERC20 Permit", () => {
   let l33tHaxx0r: Wallet;
 
   let accessServer: AccessServer;
-  let tokenContract: ViciERC20v01;
+  let tokenContract: ViciERC20MintableUtilityToken;
   let sanctionsOracle: MockSanctions;
   let chainId: number;
 
   async function setup() {
-    tokenContract = await deployERC20v1(
+    tokenContract = await deployERC20({
       accessServer,
       name,
       symbol,
       decimals,
-      max_supply
-    );
+      max_supply,
+    });
 
     await tokenContract.mint(customer.address, AMOUNT);
     await tokenContract.mint(banned.address, AMOUNT);

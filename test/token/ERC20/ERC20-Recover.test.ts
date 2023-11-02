@@ -3,13 +3,13 @@ import { BigNumber, ContractReceipt, ContractTransaction } from "ethers";
 import { expect } from "chai";
 import hardhat from "hardhat";
 
-import { MOCK_CONTRACTS, deployERC20v1 } from "../../test-utils/CommonContracts";
+import { MOCK_CONTRACTS, deployERC20 } from "../../test-utils/CommonContracts";
 
 import { expectEvent } from "../../helper";
 import {
   AccessServer,
   MockSanctions,
-  ViciERC20v01,
+  ViciERC20MintableUtilityToken,
 } from "../../../typechain-types";
 
 const ADMIN =
@@ -47,7 +47,7 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
   let accessServer: AccessServer;
   let sanctionsOracle: MockSanctions;
 
-  let initTokenContract: () => Promise<ViciERC20v01>;
+  let initTokenContract: () => Promise<ViciERC20MintableUtilityToken>;
 
   before(async function () {
     signers = await hardhat.ethers.getSigners();
@@ -67,30 +67,31 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
     await sanctionsOracle.addToSanctionsList([oligarch.address]);
     await accessServer.setSanctionsList(sanctionsOracle.address);
 
-    initTokenContract = async function (): Promise<ViciERC20v01> {
-      let newContract = await deployERC20v1(
-        accessServer,
-        name,
-        symbol,
-        decimals,
-        max_supply
-      );
+    initTokenContract =
+      async function (): Promise<ViciERC20MintableUtilityToken> {
+        let newContract = await deployERC20({
+          accessServer,
+          name,
+          symbol,
+          decimals,
+          max_supply,
+        });
 
-      await sanctionsOracle.removeFromSanctionsList([oligarch.address]);
+        await sanctionsOracle.removeFromSanctionsList([oligarch.address]);
 
-      await newContract.mint(bannedUser.address, tokenAmountHeldByBannedUser);
-      await newContract.mint(oligarch.address, tokenAmountHeldByOligarch);
-      await newContract.mint(hodler.address, hodlerTokenAmount);
-      await newContract.grantRole(ADMIN, admin.address);
-      await newContract.grantRole(MINTER, minter.address);
-      await newContract.grantRole(CUSTOMER_SERVICE, customerService.address);
-      await newContract.grantRole(MINTER, minter.address);
-      await newContract.grantRole(BANNED, bannedUser.address);
+        await newContract.mint(bannedUser.address, tokenAmountHeldByBannedUser);
+        await newContract.mint(oligarch.address, tokenAmountHeldByOligarch);
+        await newContract.mint(hodler.address, hodlerTokenAmount);
+        await newContract.grantRole(ADMIN, admin.address);
+        await newContract.grantRole(MINTER, minter.address);
+        await newContract.grantRole(CUSTOMER_SERVICE, customerService.address);
+        await newContract.grantRole(MINTER, minter.address);
+        await newContract.grantRole(BANNED, bannedUser.address);
 
-      await sanctionsOracle.addToSanctionsList([oligarch.address]);
+        await sanctionsOracle.addToSanctionsList([oligarch.address]);
 
-      return newContract;
-    };
+        return newContract;
+      };
   }); // main before
 
   after(async function () {
@@ -99,7 +100,7 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
 
   describe("Postive tests", function () {
     context("When calling `recoverSanctionedAssets()` as owner", function () {
-      let contractUnderTest: ViciERC20v01;
+      let contractUnderTest: ViciERC20MintableUtilityToken;
       let fromAccount: string;
       let toAccount: string;
       let recoverAmount: BigNumber;
@@ -205,7 +206,7 @@ describe("Test ERC20 Recover Sanctioned Assets", () => {
       balance: BigNumber;
     }
 
-    let contractUnderTest: ViciERC20v01;
+    let contractUnderTest: ViciERC20MintableUtilityToken;
     let operatorAccounts: Map<String, SignerWithAddress> = new Map();
     let testAccounts: Map<string, string> = new Map();
     let testCase: NegativeTestCase = {

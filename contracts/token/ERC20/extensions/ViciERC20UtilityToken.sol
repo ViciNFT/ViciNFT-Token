@@ -43,6 +43,14 @@ contract ViciERC20UtilityToken is ViciERC20 {
     /**
      * @notice Transfers tokens from the caller to a recipient and establishes
      * a vesting schedule.
+     * If `recipient` already has a locked balance, then
+     * - if `amount` is greater than the airdropThreshold AND `release` is later than the current
+     *      lockReleaseDate, the lockReleaseDate will be updated.
+     * - if `amount` is less than the airdropThreshold OR `release` is earlier than the current
+     *      lockReleaseDate, the lockReleaseDate will be left unchanged.
+     * @param recipient the user receiving the airdrop
+     * @param amount the amount to transfer
+     * @param release the new lock release date, as a Unix timestamp in seconds
      *
      * Requirements:
      * - caller MUST have the AIRDROPPER role
@@ -52,12 +60,12 @@ contract ViciERC20UtilityToken is ViciERC20 {
     function airdropTimelockedTokens(
         address recipient,
         uint256 amount,
-        uint256 duration
+        uint256 release
     ) public virtual {
         utilityOps().airdropTimelockedTokens(
             this,
             ERC20TransferData(_msgSender(), _msgSender(), recipient, amount),
-            duration
+            release
         );
         _post_transfer_hook(_msgSender(), recipient, amount);
     }
@@ -68,7 +76,7 @@ contract ViciERC20UtilityToken is ViciERC20 {
      * @param unlockAmount the amount to unlock
      *
      * Requirements:
-     * - caller MUST be the owner or have the AIRDROPPER role
+     * - caller MUST be the owner or have the UNLOCK_LOCKED_TOKENS role
      * - `unlockAmount` MAY be greater than the locked balance, in which case
      *     all of the account's locked tokens are unlocked.
      */
@@ -82,6 +90,24 @@ contract ViciERC20UtilityToken is ViciERC20 {
             account,
             unlockAmount
         );
+    }
+
+    /**
+     * @notice Resets the lock period for a batch of addresses
+     * @notice This function has no effect on accounts without a locked token balance
+     * @param release the new lock release date, as a Unix timestamp in seconds
+     * @param addresses the list of addresses to be reset
+     *
+     * Requirements:
+     * - caller MUST be the owner or have the UNLOCK_LOCKED_TOKENS role
+     * - `release` MAY be zero or in the past, in which case the users' entire locked balances become unlocked
+     * - `addresses` MAY contain accounts without a locked balance, in which case the account is unaffected
+     */
+    function updateTimelocks(
+        uint256 release,
+        address[] calldata addresses
+    ) public virtual {
+        utilityOps().updateTimelocks(this, msg.sender, release, addresses);
     }
 
     /**

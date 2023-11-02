@@ -12,8 +12,9 @@ import {
   AbiType,
   StateMutabilityType,
 } from "web3-utils";
-import { ContractReceipt, Event } from "ethers";
-import { expect } from "chai";
+import { ContractReceipt, Event, Wallet } from "ethers";
+
+import Web3 from "web3";
 import {
   EventFragment,
   Fragment,
@@ -21,7 +22,8 @@ import {
   Interface,
   Result,
 } from "ethers/lib/utils";
-import Web3 from "web3";
+import { expect } from "chai";
+import { Provider } from "@ethersproject/abstract-provider";
 
 const w3 = new Web3();
 
@@ -31,6 +33,11 @@ export function decodeString(hexBytes: string): string {
 
 export function encodeString(data: string): string {
   return w3.utils.padRight(w3.utils.stringToHex(data), 64);
+}
+
+export function createSignerWallet(provider: Provider) {
+  let temp = Wallet.createRandom();
+  return new Wallet(temp.privateKey, provider);
 }
 
 export abstract class FragmentABI {
@@ -390,6 +397,31 @@ export function getEventFromReceipt(
   }
 
   return null;
+}
+
+/**
+ * Returns all events with the given name from the transaction receipt.
+ * Returns an empty list if the receipt has no such event.
+ * @param receipt the transaction receipt, from `await tx.wait()`
+ * @param eventName the Solidity event name
+ * @returns the Events
+ */
+export function getEventsFromReceipt(
+  receipt: ContractReceipt,
+  criteria: EventABI | string
+): Event[] {
+  if (!receipt.events) {
+    return [];
+  }
+
+  let events: Event[] = [];
+  for (let i = 0; i < receipt.events.length; i++) {
+    if (_isThisTheEventWereLookingFor(criteria, receipt.events[i])) {
+      events.push(_normalizeEvent(criteria, receipt.events[i]));
+    }
+  }
+
+  return events;
 }
 
 export function expectEvent(

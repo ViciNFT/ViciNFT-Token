@@ -11,7 +11,6 @@ import { expect } from "chai";
 import hardhat from "hardhat";
 import {
   MOCK_CONTRACTS,
-  deployERC20v1,
   proxyDeploy,
   proxyDeployWithInitSignature,
   proxyUpgradeWithInitSignature,
@@ -19,10 +18,12 @@ import {
 import {
   AccessServer,
   ERC20UtilityOperations,
+  ERC20UtilityOperations_v01,
   LZEndpointMock,
   LzBridgeableTokenTunnel,
   ViciERC20MintableUtilityToken,
   ViciERC20UtilityToken,
+  ViciERC20v01,
 } from "../../../typechain-types";
 import { SendParamsStruct } from "../../../typechain-types/contracts/bridging/layerzero/LzBridgeableTokenTunnel";
 import {
@@ -69,6 +70,7 @@ const normalChainToLzChain = {
 const symbol = "VICI";
 const decimals = 18;
 const max_supply = hardhat.ethers.utils.parseUnits("10000000", 18);
+const AIRDROP_THRESHOLD = hardhat.ethers.utils.parseUnits("1000", 18);
 const holderStartAmount = hardhat.ethers.utils.parseUnits("100000", 18);
 
 let Transfer: EventABI;
@@ -1132,13 +1134,20 @@ describe("ERC20 Layer Zero Tests", function () {
 
     initSrcTokenContract = async function () {
       // deploy original
-      let originalContract = await deployERC20v1(
-        accessServer,
+      let erc20Ops = (await proxyDeploy(
+        "ERC20UtilityOperations_v01",
+        max_supply
+      )) as ERC20UtilityOperations_v01;
+
+      let originalContract = (await proxyDeploy(
+        "ViciERC20v01",
+        accessServer.address,
+        erc20Ops.address,
         name,
         symbol,
-        decimals,
-        max_supply
-      );
+        decimals
+      )) as ViciERC20v01;
+      erc20Ops.transferOwnership(originalContract.address);
 
       // mint all the tokens
       await originalContract.mint(contractOwner.address, max_supply);
@@ -1164,6 +1173,12 @@ describe("ERC20 Layer Zero Tests", function () {
         .connect(hodler1)
         .approve(operator1.address, holderStartAmount);
 
+      await proxyUpgradeWithInitSignature(
+        erc20Ops,
+        "ERC20UtilityOperations",
+        "reinit(uint256)",
+        AIRDROP_THRESHOLD
+      );
       let tokenContract = (await proxyUpgradeWithInitSignature(
         originalContract,
         "ViciERC20UtilityToken",
@@ -1205,9 +1220,11 @@ describe("ERC20 Layer Zero Tests", function () {
     }; // initSrcTokenContract
 
     initChildTokenContract = async function (layerZeroChainId: number) {
-      let erc20Ops = (await proxyDeploy(
+      let erc20Ops = (await proxyDeployWithInitSignature(
         "ERC20UtilityOperations",
-        max_supply
+        "initialize(uint256,uint256)",
+        max_supply,
+        AIRDROP_THRESHOLD
       )) as ERC20UtilityOperations;
 
       let tokenContract = (await proxyDeployWithInitSignature(
@@ -1292,9 +1309,11 @@ describe("ERC20 Layer Zero Tests", function () {
     }; // connectCrosschainContracts
 
     initUntrustedTokenContract = async function (chainId) {
-      let erc20Ops = (await proxyDeploy(
+      let erc20Ops = (await proxyDeployWithInitSignature(
         "ERC20UtilityOperations",
-        max_supply
+        "initialize(uint256,uint256)",
+        max_supply,
+        AIRDROP_THRESHOLD
       )) as ERC20UtilityOperations;
       let lzChainId = getLzChainId(chainId);
 

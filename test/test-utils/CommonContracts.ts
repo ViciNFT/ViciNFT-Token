@@ -6,6 +6,7 @@ import { Libraries } from "hardhat/types";
 import { Manifest } from "@openzeppelin/upgrades-core";
 import {
   ERC20UtilityOperations,
+  ERC20UtilityOperations_v01,
   ProxyAdmin,
   ViciERC20MintableUtilityToken,
   ViciERC20v01,
@@ -107,6 +108,18 @@ export async function proxyDeployWithInitSignature(
   return result;
 }
 
+export interface ERC20DeployArgs {
+  accessServer: Contract;
+  name: string;
+  symbol: string;
+  decimals: BigNumberish;
+  max_supply: BigNumberish;
+  isMain?: boolean;
+  airdropThreshold?: BigNumberish;
+  erc20Name?: string;
+  erc20OpsName?: string;
+}
+
 export async function deployERC20v1(
   accessServer: Contract,
   name: string,
@@ -114,12 +127,12 @@ export async function deployERC20v1(
   decimals: BigNumberish,
   max_supply: BigNumberish,
   erc20Name: string = "ViciERC20v01",
-  erc20OpsName: string = "ERC20UtilityOperations"
+  erc20OpsName: string = "ERC20UtilityOperations_v01"
 ): Promise<ViciERC20v01> {
   let erc20Ops = (await proxyDeploy(
     erc20OpsName,
     max_supply
-  )) as ERC20UtilityOperations;
+  )) as ERC20UtilityOperations_v01;
   let erc20 = (await proxyDeploy(
     erc20Name,
     accessServer.address,
@@ -132,26 +145,32 @@ export async function deployERC20v1(
   return erc20;
 }
 
-export async function deployERC20(
-  accessServer: Contract,
-  name: string,
-  symbol: string,
-  decimals: BigNumberish,
-  max_supply: BigNumberish,
-  erc20Name: string = "ViciERC20MintableUtilityToken",
-  erc20OpsName: string = "ERC20UtilityOperations"
-): Promise<ViciERC20MintableUtilityToken> {
-  let erc20Ops = (await proxyDeploy(
+export async function deployERC20({
+  accessServer,
+  name,
+  symbol,
+  decimals,
+  max_supply,
+  isMain = false,
+  airdropThreshold = hardhat.ethers.utils.parseUnits("1000", 18),
+  erc20Name = "ViciERC20MintableUtilityToken",
+  erc20OpsName = "ERC20UtilityOperations",
+}: ERC20DeployArgs): Promise<ViciERC20MintableUtilityToken> {
+  let erc20Ops = (await proxyDeployWithInitSignature(
     erc20OpsName,
-    max_supply
+    "initialize(uint256,uint256)",
+    max_supply,
+    airdropThreshold
   )) as ERC20UtilityOperations;
-  let erc20 = (await proxyDeploy(
+  let erc20 = (await proxyDeployWithInitSignature(
     erc20Name,
+"initialize(address,address,string,string,uint8,bool)",
     accessServer.address,
     erc20Ops.address,
     name,
     symbol,
-    decimals
+    decimals,
+    isMain
   )) as ViciERC20MintableUtilityToken;
   erc20Ops.transferOwnership(erc20.address);
   return erc20;
