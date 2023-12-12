@@ -1037,8 +1037,8 @@ let debug = false;
 let testEverything = true;
 let testDeployment = testEverything;
 let testBridgeFunctions = testEverything;
-let testCrossChainSend = testEverything;
-let testRetry = true;
+let testCrossChainSend = true;
+let testRetry = testEverything;
 
 let deployFilter = {
   testUpgrade: true,
@@ -1049,15 +1049,15 @@ let bridgeFilter = {
   sentToBridge: testEverything,
   receivedFromBridge: testEverything,
   lzReceive: testEverything,
-  stepThrough: true,
+  stepThrough: testEverything,
 };
 let crossChainFilter = {
   mainToChild: true,
-  childToMain: testEverything,
-  childToChild: testEverything,
+  childToMain: true,
+  childToChild: true,
 };
 let retryFilter = {
-  testRetryOnEndpoint: true,
+  testRetryOnEndpoint: testEverything,
   testRetryOnTunnel: testEverything,
 };
 
@@ -2131,6 +2131,48 @@ describe("ERC20 Layer Zero Tests", function () {
 
               testCase.crossChainSendWasSuccessful(true, false);
             }); //  As the authorized agent of fund owner
+
+            context(
+              "if the transfer amount exceeds the unlocked balance",
+              function () {
+                this.beforeAll(async function () {
+                  await preTestSetup();
+                  testCase.reinit({
+                    fromAddress: hodler1.address,
+                    toAddress: hodler3.address,
+                    srcChainId: normalChainIdMain,
+                    dstChainId: normalChainIdChild1,
+                    sendAmount: holderStartAmount.add(
+                      hardhat.ethers.utils.parseUnits("1000", 18)
+                    ),
+                  });
+                  await testCase.srcToken.airdropTimelockedTokens(
+                    hodler1.address,
+                    holderStartAmount,
+                    BigNumber.from(LAYERZERO_ADMIN_ROLE)
+                  );
+                  // console.log(
+                  //   "user total balance: ",
+                  //   await testCase.srcToken.balanceOf(hodler1.address)
+                  // );
+                  // console.log(
+                  //   "user locked balance: ",
+                  //   await testCase.srcToken.lockedBalanceOf(hodler1.address)
+                  // );
+                  // console.log("bridge amount", testCase.sendAmount);
+                });
+
+                this.afterAll(async function () {
+                  await postTestTeardown();
+                });
+
+                it("The error is 'insufficient balance'", async function () {
+                  await expect(
+                    testCase.sendCrossChain(hodler1)
+                  ).to.be.revertedWith("insufficient balance");
+                });
+              }
+            ); // if the transfer amount exceeds the unlocked balance
           }
         ); // When depositing from the main chain to a child chain
       }
@@ -2189,6 +2231,66 @@ describe("ERC20 Layer Zero Tests", function () {
 
               testCase.crossChainSendWasSuccessful(false, true);
             }); //  As the authorized agent of fund owner
+
+            context(
+              "if the transfer amount exceeds the unlocked balance",
+              function () {
+                this.beforeAll(async function () {
+                  await preTestSetup();
+                  await LayerZeroTestCase.sendToChildChain(
+                    {
+                      fromAddress: contractOwner.address,
+                      toAddress: contractOwner.address,
+                      srcChainId: normalChainIdMain,
+                      dstChainId: normalChainIdChild1,
+                      sendAmount: hardhat.ethers.utils.parseUnits("250", 18),
+                    },
+                    contractOwner
+                  );
+                  await LayerZeroTestCase.sendToChildChain(
+                    {
+                      fromAddress: contractOwner.address,
+                      toAddress: hodler2.address,
+                      srcChainId: normalChainIdMain,
+                      dstChainId: normalChainIdChild1,
+                      sendAmount: hardhat.ethers.utils.parseUnits("250", 18),
+                    },
+                    contractOwner
+                  );
+                  testCase.reinit({
+                    fromAddress: hodler2.address,
+                    toAddress: hodler4.address,
+                    srcChainId: normalChainIdChild1,
+                    dstChainId: normalChainIdMain,
+                    sendAmount: hardhat.ethers.utils.parseUnits("400", 18),
+                  });
+                  await testCase.srcToken.airdropTimelockedTokens(
+                    hodler2.address,
+                    hardhat.ethers.utils.parseUnits("250", 18),
+                    BigNumber.from(LAYERZERO_ADMIN_ROLE)
+                  );
+                  // console.log(
+                  //   "user total balance: ",
+                  //   await testCase.srcToken.balanceOf(hodler2.address)
+                  // );
+                  // console.log(
+                  //   "user locked balance: ",
+                  //   await testCase.srcToken.lockedBalanceOf(hodler2.address)
+                  // );
+                  // console.log("bridge amount", testCase.sendAmount);
+                });
+
+                this.afterAll(async function () {
+                  await postTestTeardown();
+                });
+
+                it("The error is 'insufficient balance'", async function () {
+                  await expect(
+                    testCase.sendCrossChain(hodler2)
+                  ).to.be.revertedWith("insufficient balance");
+                });
+              }
+            ); // if the transfer amount exceeds the unlocked balance
           }
         ); // When depositing from the main chain to a child chain
       }
@@ -2245,6 +2347,66 @@ describe("ERC20 Layer Zero Tests", function () {
 
               testCase.crossChainSendWasSuccessful(false, true);
             }); //  As the authorized agent of fund owner
+
+            context(
+              "if the transfer amount exceeds the unlocked balance",
+              function () {
+                this.beforeAll(async function () {
+                  await preTestSetup();
+                  await LayerZeroTestCase.sendToChildChain(
+                    {
+                      fromAddress: contractOwner.address,
+                      toAddress: contractOwner.address,
+                      srcChainId: normalChainIdMain,
+                      dstChainId: normalChainIdChild1,
+                      sendAmount: hardhat.ethers.utils.parseUnits("250", 18),
+                    },
+                    contractOwner
+                  );
+                  await LayerZeroTestCase.sendToChildChain(
+                    {
+                      fromAddress: contractOwner.address,
+                      toAddress: hodler2.address,
+                      srcChainId: normalChainIdMain,
+                      dstChainId: normalChainIdChild1,
+                      sendAmount: hardhat.ethers.utils.parseUnits("250", 18),
+                    },
+                    contractOwner
+                  );
+                  testCase.reinit({
+                    fromAddress: hodler2.address,
+                    toAddress: hodler4.address,
+                    srcChainId: normalChainIdChild1,
+                    dstChainId: normalChainIdChild2,
+                    sendAmount: hardhat.ethers.utils.parseUnits("400", 18),
+                  });
+                  await testCase.srcToken.airdropTimelockedTokens(
+                    hodler2.address,
+                    hardhat.ethers.utils.parseUnits("250", 18),
+                    BigNumber.from(LAYERZERO_ADMIN_ROLE)
+                  );
+                  // console.log(
+                  //   "user total balance: ",
+                  //   await testCase.srcToken.balanceOf(hodler2.address)
+                  // );
+                  // console.log(
+                  //   "user locked balance: ",
+                  //   await testCase.srcToken.lockedBalanceOf(hodler2.address)
+                  // );
+                  // console.log("bridge amount", testCase.sendAmount);
+                });
+
+                this.afterAll(async function () {
+                  await postTestTeardown();
+                });
+
+                it("The error is 'insufficient balance'", async function () {
+                  await expect(
+                    testCase.sendCrossChain(hodler2)
+                  ).to.be.revertedWith("insufficient balance");
+                });
+              }
+            ); // if the transfer amount exceeds the unlocked balance
           }
         ); //  When transferring from one child chain to another
       }

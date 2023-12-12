@@ -76,7 +76,7 @@ contract ERC20UtilityOperations is ERC20Operations, IERC20UtilityOperations {
         if (currentLockedBalance == 0) {
             releaseDate[transferData.toAddress] = release;
             lockedAmount[transferData.toAddress] = transferData.amount;
-            } else if (
+        } else if (
             transferData.amount >= airdropThreshold &&
             release >= currentLockRelease
         ) {
@@ -194,13 +194,16 @@ contract ERC20UtilityOperations is ERC20Operations, IERC20UtilityOperations {
     /**
      * @dev see {IERC20-transfer}.
      */
-    function transfer(
-        IViciAccess ams,
-        ERC20TransferData memory transferData
-    ) public virtual override(ERC20Operations, IERC20Operations) {
-        _checkLocks(transferData.fromAddress, transferData.amount);
+    function doTransfer(
+        address operator,
+        address fromAddress,
+        address toAddress,
+        uint256 thing,
+        uint256 amount
+    ) public virtual override(OwnerOperator, IOwnerOperator) {
+        _checkLocks(fromAddress, amount);
 
-        ERC20Operations.transfer(ams, transferData);
+        OwnerOperator.doTransfer(operator, fromAddress, toAddress, thing, amount);
     }
 
     /**

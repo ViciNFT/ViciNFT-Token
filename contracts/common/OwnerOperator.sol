@@ -105,13 +105,9 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
     /**
      * @dev revert if the item does not exist
      */
-    function enforceItemExists(uint256 thing)
-        public
-        view
-        virtual
-        override
-        itemExists(thing)
-    {}
+    function enforceItemExists(
+        uint256 thing
+    ) public view virtual override itemExists(thing) {}
 
     /* ################################################################
      * Queries
@@ -149,13 +145,9 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
      * Requirements
      * - `index` MUST be less than the number of owners.
      */
-    function ownerAtIndex(uint256 index)
-        public
-        view
-        virtual
-        override
-        returns (address)
-    {
+    function ownerAtIndex(
+        uint256 index
+    ) public view virtual override returns (address) {
         require(allOwners.length() > index, "owner index out of bounds");
         return allOwners.at(index);
     }
@@ -179,13 +171,9 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
      * Requirements
      * - `index` MUST be less than the number of items.
      */
-    function itemAtIndex(uint256 index)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function itemAtIndex(
+        uint256 index
+    ) public view virtual override returns (uint256) {
         require(allItems.length() > index, "item index out of bounds");
         return allItems.at(index);
     }
@@ -195,13 +183,9 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
      * @dev NFTS: don't use this function. It returns 1 or 0 depending on
      *     whether the item exists. Use `exists()` instead.
      */
-    function itemSupply(uint256 thing)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
+    function itemSupply(
+        uint256 thing
+    ) public view virtual override returns (uint256) {
         return amountOfItem[thing];
     }
 
@@ -216,14 +200,10 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
      * - `owner` MUST NOT be the null address.
      * - `thing` MUST exist.
      */
-    function getBalance(address owner, uint256 thing)
-        public
-        view
-        virtual
-        override
-        validUser(owner)
-        returns (uint256)
-    {
+    function getBalance(
+        address owner,
+        uint256 thing
+    ) public view virtual override validUser(owner) returns (uint256) {
         return balances[thing][owner];
     }
 
@@ -236,14 +216,9 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
      * Requirements:
      * - `owner` MUST NOT be the null address.
      */
-    function userWallet(address user)
-        public
-        view
-        virtual
-        override
-        validUser(user)
-        returns (uint256[] memory)
-    {
+    function userWallet(
+        address user
+    ) public view virtual override validUser(user) returns (uint256[] memory) {
         return itemIdsByOwner[user].asList();
     }
 
@@ -258,14 +233,9 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
      * - `owner` MUST NOT be the null address.
      * - `thing` MUST exist.
      */
-    function ownerItemCount(address owner)
-        public
-        view
-        virtual
-        override
-        validUser(owner)
-        returns (uint256)
-    {
+    function ownerItemCount(
+        address owner
+    ) public view virtual override validUser(owner) returns (uint256) {
         return itemIdsByOwner[owner].length();
     }
 
@@ -280,14 +250,10 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
      * - `owner` MUST NOT be the null address.
      * - `index` MUST be less than the number of items.
      */
-    function itemOfOwnerByIndex(address owner, uint256 index)
-        public
-        view
-        virtual
-        override
-        validUser(owner)
-        returns (uint256)
-    {
+    function itemOfOwnerByIndex(
+        address owner,
+        uint256 index
+    ) public view virtual override validUser(owner) returns (uint256) {
         require(
             itemIdsByOwner[owner].length() > index,
             "item index out of bounds"
@@ -304,14 +270,9 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
      * Requirements:
      * - `thing` MUST exist.
      */
-    function itemOwnerCount(uint256 thing)
-        public
-        view
-        virtual
-        override
-        itemExists(thing)
-        returns (uint256)
-    {
+    function itemOwnerCount(
+        uint256 thing
+    ) public view virtual override itemExists(thing) returns (uint256) {
         return ownersByItemIds[thing].length();
     }
 
@@ -329,14 +290,10 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
      * - `index` MUST be less than the number of owners.
      * - NFTS: `index` MUST be 0.
      */
-    function ownerOfItemAtIndex(uint256 thing, uint256 index)
-        public
-        view
-        virtual
-        override
-        itemExists(thing)
-        returns (address owner)
-    {
+    function ownerOfItemAtIndex(
+        uint256 thing,
+        uint256 index
+    ) public view virtual override itemExists(thing) returns (address owner) {
         require(
             ownersByItemIds[thing].length() > index,
             "owner index out of bounds"
@@ -397,7 +354,10 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
                     _checkApproval(operator, fromAddress, thing, amount),
                     "not authorized"
                 );
-                if (allowances[fromAddress][thing][operator] > 0) {
+                uint256 currentAllowance = allowances[fromAddress][thing][operator];
+                if (
+                    currentAllowance > 0 && currentAllowance != type(uint256).max
+                ) {
                     allowances[fromAddress][thing][operator] -= amount;
                 }
             }
@@ -497,13 +457,10 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
      * @param fromAddress the owner
      * @param operator the operator
      */
-    function isApprovedForAll(address fromAddress, address operator)
-        public
-        view
-        virtual
-        override
-        returns (bool)
-    {
+    function isApprovedForAll(
+        address fromAddress,
+        address operator
+    ) public view virtual override returns (bool) {
         return operatorApprovals[fromAddress][operator];
     }
 
@@ -591,13 +548,10 @@ abstract contract OwnerOperator is Ownable, IOwnerOperator {
      * Requirements:
      * - `thing` MUST exist
      */
-    function getApprovedForItem(address fromAddress, uint256 thing)
-        public
-        view
-        virtual
-        override
-        returns (address)
-    {
+    function getApprovedForItem(
+        address fromAddress,
+        uint256 thing
+    ) public view virtual override returns (address) {
         require(amountOfItem[thing] > 0);
         return itemApprovals[fromAddress][thing];
     }
